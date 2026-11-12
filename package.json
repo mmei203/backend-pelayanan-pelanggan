@@ -20,7 +20,8 @@
 		"prisma:generate": "npx prisma generate",
 		"prisma:db-pull": "npx prisma db pull",
 		"prisma:migrate": "npx prisma migrate dev",
-		"build": "npx prisma generate"
+		"postinstall": "prisma generate",
+		"build": "prisma generate"
 	},
 	"prisma": {
 		"seed": "node prisma/seed.js"
