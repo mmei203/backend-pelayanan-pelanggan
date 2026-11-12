@@ -7,7 +7,7 @@ const parseSumberAduan = (value) => {
 	if (!value) return undefined;
 	const val = String(value).trim().toLowerCase();
 	if (val === "non_pelangan" || val === "non pelangan" || val === "non_pelanggan" || val === "non pelanggan" || val === "non") {
-		return "Non_Pelangan";
+		return "Non_Pelanggan";
 	}
 	if (val === "pelanggan") {
 		return "Pelanggan";
@@ -146,11 +146,11 @@ export const createPelanggan = async (req, res, next) => {
 				.json({ success: false, message: "idUserCS wajib diisi" });
 		}
 
-		// Validasi / penentuan sumberAduan (Pelanggan / Non Pelangan)
+		// Validasi / penentuan sumberAduan (Pelanggan / Non Pelanggan)
 		// Jika frontend tidak mengirim, otomatis cek nomor kontrak PDAM
 		let resolvedSumberAduan = parseSumberAduan(sumberAduan);
 		if (!resolvedSumberAduan) {
-			resolvedSumberAduan = noKontakPdam && noKontakPdam.trim() !== "" ? "Pelanggan" : "Non_Pelangan";
+			resolvedSumberAduan = noKontakPdam && noKontakPdam.trim() !== "" ? "Pelanggan" : "Non_Pelanggan";
 		}
 
 		const resolvedSaluranKeluhan = parseSaluranKeluhan(saluranKeluhan) || "WhatsApp";
