@@ -1,7 +1,7 @@
 import "dotenv/config";
 import mariadb from "mariadb";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
-import { PrismaClient } from "../../generated/prisma/client";
+import { PrismaClient } from "@prisma/client";
 
 const pool = mariadb.createPool({
 	host: process.env.DB_HOST,
