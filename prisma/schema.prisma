@@ -20,13 +20,15 @@ model TabelPelanggan {
 }
 
 model TabelUser {
-  idUser    String          @id @default(uuid()) @map("ID_USER") @db.VarChar(36)
-  namaUser  String          @map("NAMA_USER") @db.VarChar(100)
-  email     String          @map("EMAIL") @db.VarChar(255)
-  username  String          @map("USERNAME") @db.VarChar(255)
-  password  String          @map("PASSWORD") @db.VarChar(255)
-  role      TABEL_USER_ROLE @map("ROLE")
-  createdAt DateTime?       @map("CREATED_AT") @db.Timestamp(0)
+  idUser             String           @id @default(uuid()) @map("ID_USER") @db.VarChar(36)
+  namaUser           String           @map("NAMA_USER") @db.VarChar(100)
+  email              String           @map("EMAIL") @db.VarChar(255)
+  username           String           @map("USERNAME") @db.VarChar(255)
+  password           String           @map("PASSWORD") @db.VarChar(255)
+  role               TABEL_USER_ROLE  @map("ROLE")
+  createdAt          DateTime?        @map("CREATED_AT") @db.Timestamp(0)
+  pengaduanDitangani TabelPengaduan[] @relation("Menangani")
+  pengaduanDiterima  TabelPengaduan[] @relation("Menerima")
 
   @@index([username], map: "AK_IDENTIFIER_USERNAME")
   @@index([email], map: "AK_IDENTIFIRE_EMAIL")
@@ -52,6 +54,8 @@ model TabelPengaduan {
   saluranKeluhan   TABEL_PENGADUAN_SALURAN_KELUHAN @map("SALURAN_KELUHAN")
   sumberAduan      TABEL_PENGADUAN_SUMBER_ADUAN    @map("SUMBER_ADUAN")
   pelanggan        TabelPelanggan                  @relation(fields: [idPelanggan], references: [idPelanggan], onUpdate: Restrict, map: "FK_MEMILIKI")
+  penangani        TabelUser?                      @relation("Menangani", fields: [idUserPenanganan], references: [idUser], onDelete: Restrict, onUpdate: Restrict, map: "TABEL_PENGADUAN_ID_USER_PENANGANAN_fkey")
+  penerima         TabelUser                       @relation("Menerima", fields: [idUserPenerima], references: [idUser], onUpdate: Restrict, map: "TABEL_PENGADUAN_ID_USER_PENERIMA_fkey")
 
   @@index([idPelanggan], map: "FK_MEMBUAT")
   @@index([idUserPenanganan], map: "FK_MENANGANI")
