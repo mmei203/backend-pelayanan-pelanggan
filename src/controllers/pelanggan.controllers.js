@@ -167,6 +167,7 @@ export const createPelanggan = async (req, res, next) => {
 					keluhan,
 					status: "PENDING",
 					tanggalDiterima: new Date(),
+					createdAt: new Date(),
 					sumberAduan: resolvedSumberAduan,
 					saluranKeluhan: resolvedSaluranKeluhan,
 				},
