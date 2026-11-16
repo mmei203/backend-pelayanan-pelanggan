@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import path from "path";
+import os from "os";
 import { fileURLToPath } from "url";
 
 import userRoutes from "./src/routes/user.routes.js";
@@ -17,7 +18,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static uploads folder agar file/gambar dapat diakses langsung oleh browser
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+const uploadsStaticDir = process.env.VERCEL
+	? path.join(os.tmpdir(), "uploads")
+	: path.join(__dirname, "uploads");
+app.use("/uploads", express.static(uploadsStaticDir));
 
 // Serve static documentation
 app.use("/docs", express.static(path.join(__dirname, "docs")));
