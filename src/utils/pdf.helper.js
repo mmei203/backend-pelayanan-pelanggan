@@ -114,11 +114,24 @@ export const generateFormulirAduanPelangganPDF = (pengaduan, stream) => {
 	const checkboxSize = 14;
 	const checkX = left + 140;
 
-	// Saluran keluhan: WhatsApp, Telepon, Datang_Ketempat / Datang Langsung, atau Temuan Lapangan
-	const saluran = String(pengaduan.saluranKeluhan || "").trim().toLowerCase();
-	const isDatang = saluran === "datang_ketempat" || saluran === "datang ketempat" || saluran === "datang langsung";
-	const isTelepon = saluran === "telepon" || saluran === "telp" || saluran === "whatsapp" || saluran === "wa";
-	const isTemuan = saluran === "temuan lapangan" || saluran === "temuan_lapangan" || saluran === "temuan";
+	// Saluran keluhan: enum TABEL_PENGADUAN_SALURAN_KELUHAN
+	// Nilai enum Prisma: "Datang_Langsung" | "Via_Telepon" | "Temuan_Lapangan"
+	// Nilai @map di DB:  "Datang Langsung" | "Via Telepon"  | "Temuan Lapangan"
+	const saluran = String(pengaduan.saluranKeluhan || "").trim();
+	const saluranLower = saluran.toLowerCase();
+	const isDatang =
+		saluran === "Datang_Langsung" ||
+		saluranLower === "datang langsung" ||
+		saluranLower === "datang_langsung";
+	const isTelepon =
+		saluran === "Via_Telepon" ||
+		saluranLower === "via telepon" ||
+		saluranLower === "via_telepon" ||
+		saluranLower === "telepon";
+	const isTemuan =
+		saluran === "Temuan_Lapangan" ||
+		saluranLower === "temuan lapangan" ||
+		saluranLower === "temuan_lapangan";
 
 	doc.fontSize(10).font("Helvetica");
 	doc.text("1  Datang Langsung", left, sectionY);
