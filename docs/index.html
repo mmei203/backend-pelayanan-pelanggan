@@ -385,6 +385,27 @@
       </div>
     </div>
 
+    <!-- UPDATE USER BY ID -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method PUT">PUT</span>
+        <span class="path">/api/users/:id</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Mengubah data user master oleh administrator.</div>
+        <div class="tab-title">URL Parameter:</div>
+        <pre><code class="language-http">:id -> ID User (UUID dari tabel TABEL_USER, contoh: 3c90a1b2-4d5e-6f7a-8b9c-0d1e2f3a4b5c)</code></pre>
+        <div class="tab-title">Request Body (JSON):</div>
+        <pre><code class="language-json">{
+  "namaUser": "Budi Pengawas Updated",
+  "email": "budi_new@pald.co.id",
+  "username": "budi_pengawas",
+  "role": "Pengawas",
+  "password": "newpassword123" // Opsional jika ingin ubah password
+}</code></pre>
+      </div>
+    </div>
+
     <!-- SECTION: PELANGGAN -->
     <h2 class="section-title" id="pelanggan">📋 3. Data Pengaduan Pelanggan</h2>
 
@@ -423,6 +444,20 @@
       </div>
     </div>
 
+    <!-- GET PELANGGAN BY ID -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method GET">GET</span>
+        <span class="path">/api/pelanggan/:id</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Mengambil detail data pengaduan tertentu berdasarkan ID Pengaduan.</div>
+        <div class="tab-title">URL Parameter:</div>
+        <pre><code class="language-http">:id -> ID Pengaduan (UUID dari TABEL_PENGADUAN, contoh: 58945740-6742-45d7-8d1c-f08053c61441)
+*Catatan: Bukan ID Pelanggan, melainkan idPengaduan.</code></pre>
+      </div>
+    </div>
+
     <!-- UPDATE PENGADUAN -->
     <div class="endpoint-card">
       <div class="endpoint-header">
@@ -431,6 +466,8 @@
       </div>
       <div class="endpoint-body">
         <div class="endpoint-desc">Update status pengaduan (ON PROGRESS atau SELESAI). Mendukung Multipart Form-Data untuk upload gambar bukti.</div>
+        <div class="tab-title">URL Parameter:</div>
+        <pre><code class="language-http">:id -> ID Pengaduan (UUID dari TABEL_PENGADUAN, contoh: 58945740-6742-45d7-8d1c-f08053c61441)</code></pre>
         <div class="tab-title">Form Data Fields (Multipart):</div>
         <pre><code class="language-http">status: "ON PROGRESS" | "SELESAI"
 operatorId: "uuid-operator"
@@ -453,6 +490,8 @@ fotoKeluhan: (File binary / gambar bukti)</code></pre>
       </div>
       <div class="endpoint-body">
         <div class="endpoint-desc">Mengunduh/membuka file Formulir Aduan Pelanggan dalam bentuk PDF resmi (header logo PALD).</div>
+        <div class="tab-title">URL Parameter:</div>
+        <pre><code class="language-http">:id -> ID Pengaduan (UUID dari TABEL_PENGADUAN, contoh: 58945740-6742-45d7-8d1c-f08053c61441)</code></pre>
       </div>
     </div>
 
@@ -464,6 +503,8 @@ fotoKeluhan: (File binary / gambar bukti)</code></pre>
       </div>
       <div class="endpoint-body">
         <div class="endpoint-desc">Membuka atau mendownload file <strong>Dokumen Laporan</strong> yang diunggah oleh operator lapangan untuk pengaduan tertentu. Mengembalikan stream file langsung atau redirect ke storage URL.</div>
+        <div class="tab-title">URL Parameter:</div>
+        <pre><code class="language-http">:id -> ID Pengaduan (UUID dari TABEL_PENGADUAN, contoh: 58945740-6742-45d7-8d1c-f08053c61441)</code></pre>
       </div>
     </div>
 
@@ -475,6 +516,8 @@ fotoKeluhan: (File binary / gambar bukti)</code></pre>
       </div>
       <div class="endpoint-body">
         <div class="endpoint-desc">Membuka atau mendownload <strong>Foto Keluhan/Bukti Pekerjaan</strong> yang diunggah oleh operator lapangan untuk pengaduan tertentu.</div>
+        <div class="tab-title">URL Parameter:</div>
+        <pre><code class="language-http">:id -> ID Pengaduan (UUID dari TABEL_PENGADUAN, contoh: 58945740-6742-45d7-8d1c-f08053c61441)</code></pre>
       </div>
     </div>
 

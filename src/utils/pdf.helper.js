@@ -114,11 +114,11 @@ export const generateFormulirAduanPelangganPDF = (pengaduan, stream) => {
 	const checkboxSize = 14;
 	const checkX = left + 140;
 
-	// Saluran keluhan: WhatsApp, Telepon, Datang_Ketempat / Datang Langsung
-	const saluran = pengaduan.saluranKeluhan || "";
-	const isDatang = saluran === "Datang_Ketempat" || saluran === "Datang Ketempat";
-	const isTelepon = saluran === "Telepon" || saluran === "WhatsApp";
-	const isTemuan = false; // default form
+	// Saluran keluhan: WhatsApp, Telepon, Datang_Ketempat / Datang Langsung, atau Temuan Lapangan
+	const saluran = String(pengaduan.saluranKeluhan || "").trim().toLowerCase();
+	const isDatang = saluran === "datang_ketempat" || saluran === "datang ketempat" || saluran === "datang langsung";
+	const isTelepon = saluran === "telepon" || saluran === "telp" || saluran === "whatsapp" || saluran === "wa";
+	const isTemuan = saluran === "temuan lapangan" || saluran === "temuan_lapangan" || saluran === "temuan";
 
 	doc.fontSize(10).font("Helvetica");
 	doc.text("1  Datang Langsung", left, sectionY);
