@@ -430,17 +430,19 @@
       </div>
       <div class="endpoint-body">
         <div class="endpoint-desc">Membuat aduan baru pelanggan (dibuat oleh CS). ID Pengaduan (UUID) dibuat otomatis oleh server; tidak perlu dikirim di request.</div>
-        <div class="tab-title">Request Body (JSON):</div>
-        <pre><code class="language-json">{
-  "idUserCS": "3c90a1b2-4d5e-6f7a-8b9c-0d1e2f3a4b5c",
-  "namaPelanggan": "Ahmad Dani",
-  "noHp": "081234567890",
-  "noKontakPdam": "12345678", // Kosongkan jika Non Pelanggan
-  "alamat": "Jl. Kertak Hanyar No. 12",
-  "keluhan": "Pipa bocor di depan pagar",
-  "sumberAduan": "Pelanggan", // Pelanggan | Non_Pelangan
-  "saluranKeluhan": "Datang_Langsung" // Datang_Langsung | Via_Telepon | Temuan_Lapangan
-}</code></pre>
+        <div class="tab-title">Form Data (Multipart):</div>
+        <pre><code class="language-http">idUserCS: "3c90a1b2-4d5e-6f7a-8b9c-0d1e2f3a4b5c"
+namaPelanggan: "Ahmad Dani"
+noHp: "081234567890"
+noKontakPdam: "12345678" (kosongkan jika Non Pelanggan)
+alamat: "Jl. Kertak Hanyar No. 12"
+keluhan: "Pipa bocor di depan pagar"
+sumberAduan: "Pelanggan" (opsional)
+saluranKeluhan: "Datang_Langsung" (opsional)
+dokumenLaporan: (File binary, opsional)
+fotoKeluhan: (File binary, opsional)</code></pre>
+        <div class="tab-title">Response:</div>
+        <div class="endpoint-desc">Properti <code>data.pengaduanBaru.dokumenLaporan</code> dan <code>data.pengaduanBaru.fotoKeluhan</code> berisi URL file, atau <code>null</code> jika file tidak diunggah.</div>
       </div>
     </div>
 
@@ -465,7 +467,7 @@
         <span class="path">/api/pelanggan/:id</span>
       </div>
       <div class="endpoint-body">
-        <div class="endpoint-desc">Update status pengaduan (ON PROGRESS atau SELESAI). Mendukung Multipart Form-Data untuk upload gambar bukti.</div>
+        <div class="endpoint-desc">Memperbarui pengaduan. Mendukung Multipart Form-Data untuk upload dokumen laporan dan foto keluhan pada setiap status.</div>
         <div class="tab-title">URL Parameter:</div>
         <pre><code class="language-http">:id -> ID Pengaduan (UUID dari TABEL_PENGADUAN, contoh: 58945740-6742-45d7-8d1c-f08053c61441)</code></pre>
         <div class="tab-title">Form Data Fields (Multipart):</div>

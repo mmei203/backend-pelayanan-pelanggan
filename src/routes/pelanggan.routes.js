@@ -21,7 +21,14 @@ router.get("/pelanggan/:id/print", printPengaduan);
 router.get("/pelanggan/:id/dokumen", viewDokumenLaporan);
 router.get("/pelanggan/:id/foto", viewFotoKeluhan);
 router.get("/pelanggan/:id", getPelangganById);
-router.post("/pelanggan", createPelanggan);
+router.post(
+	"/pelanggan",
+	uploadMiddleware.fields([
+		{ name: "dokumenLaporan", maxCount: 1 },
+		{ name: "fotoKeluhan", maxCount: 1 },
+	]),
+	createPelanggan,
+);
 
 router.put(
 	"/pelanggan/:id",
