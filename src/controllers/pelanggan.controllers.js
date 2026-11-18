@@ -1,4 +1,5 @@
 import fs from "fs";
+import { randomUUID } from "crypto";
 import path from "path";
 import { prisma } from "../config/db.js";
 import { formatFileUrl } from "../utils/url.helper.js";
@@ -292,6 +293,7 @@ export const createPelanggan = async (req, res, next) => {
 		const result = await prisma.$transaction(async (tx) => {
 			const pelangganBaru = await tx.TABEL_PELANGGAN.create({
 				data: {
+					ID_PELANGGAN: randomUUID(),
 					NAMA_PELANGGAN: namaPelanggan,
 					NO_HP: noHp,
 					NO_KONTAK_PDAM: noKontakPdam,
@@ -299,7 +301,6 @@ export const createPelanggan = async (req, res, next) => {
 					CREATED_AT: new Date(),
 				},
 			});
-
 			const pengaduanBaru = await tx.TABEL_PENGADUAN.create({
 				data: {
 					ID_PELANGGAN: pelangganBaru.ID_PELANGGAN,
