@@ -293,6 +293,51 @@
       </div>
     </div>
 
+    <!-- FORGOT PASSWORD -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method POST">POST</span>
+        <span class="path">/api/auth/forgot-password</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Meminta token untuk reset password berdasarkan alamat email terdaftar (Token berlaku 15 menit).</div>
+        <div class="tab-title">Request Body (JSON):</div>
+        <pre><code class="language-json">{
+  "email": "cs@pald.co.id"
+}</code></pre>
+        <div class="tab-title">Response (200 OK):</div>
+        <pre><code class="language-json">{
+  "success": true,
+  "message": "Token reset password berhasil dibuat (berlaku 15 menit).",
+  "data": {
+    "email": "cs@pald.co.id",
+    "resetToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}</code></pre>
+      </div>
+    </div>
+
+    <!-- RESET PASSWORD -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method POST">POST</span>
+        <span class="path">/api/auth/reset-password</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Menyimpan password baru menggunakan resetToken yang didapat dari forgot-password.</div>
+        <div class="tab-title">Request Body (JSON):</div>
+        <pre><code class="language-json">{
+  "resetToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "newPassword": "passwordBaru123"
+}</code></pre>
+        <div class="tab-title">Response (200 OK):</div>
+        <pre><code class="language-json">{
+  "success": true,
+  "message": "Password berhasil di-reset. Silakan login kembali dengan password baru Anda."
+}</code></pre>
+      </div>
+    </div>
+
     <!-- SECTION: USERS -->
     <h2 class="section-title" id="users">👥 2. Manajemen Master User</h2>
 
@@ -408,6 +453,28 @@ fotoKeluhan: (File binary / gambar bukti)</code></pre>
       </div>
       <div class="endpoint-body">
         <div class="endpoint-desc">Mengunduh/membuka file Formulir Aduan Pelanggan dalam bentuk PDF resmi (header logo PALD).</div>
+      </div>
+    </div>
+
+    <!-- VIEW DOKUMEN LAPORAN -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method GET">GET</span>
+        <span class="path">/api/pelanggan/:id/dokumen</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Membuka atau mendownload file <strong>Dokumen Laporan</strong> yang diunggah oleh operator lapangan untuk pengaduan tertentu. Mengembalikan stream file langsung atau redirect ke storage URL.</div>
+      </div>
+    </div>
+
+    <!-- VIEW FOTO KELUHAN -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method GET">GET</span>
+        <span class="path">/api/pelanggan/:id/foto</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Membuka atau mendownload <strong>Foto Keluhan/Bukti Pekerjaan</strong> yang diunggah oleh operator lapangan untuk pengaduan tertentu.</div>
       </div>
     </div>
 

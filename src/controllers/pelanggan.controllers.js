@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { prisma } from "../config/db.js";
 import { formatFileUrl } from "../utils/url.helper.js";
 import { generateFormulirAduanPelangganPDF } from "../utils/pdf.helper.js";
@@ -401,6 +403,77 @@ export const printPengaduan = async (req, res, next) => {
 		);
 
 		generateFormulirAduanPelangganPDF(pengaduan, res);
+	} catch (error) {
+		next(error);
+	}
+};
+
+// Helper internal untuk mengirim file binary atau redirect jika URL eksternal
+const serveUploadedFile = (res, filePath, fallbackName = "file") => {
+	if (!filePath) {
+		return res
+			.status(404)
+			.json({ success: false, message: "File dokumentasi tidak tersedia" });
+	}
+
+	// Jika file berupa URL eksternal (misal CDN / S3)
+	if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+		return res.redirect(filePath);
+	}
+
+	// Cari file di filesystem
+	const resolvedPath = path.isAbsolute(filePath)
+		? filePath
+		: path.resolve(process.cwd(), filePath);
+
+	if (!fs.existsSync(resolvedPath)) {
+		return res
+			.status(404)
+			.json({ success: false, message: "File fisik tidak ditemukan di server" });
+	}
+
+	return res.sendFile(resolvedPath);
+};
+
+// Endpoint untuk melihat / membuka Dokumen Laporan dari operator
+export const viewDokumenLaporan = async (req, res, next) => {
+	try {
+		const { id } = req.params;
+
+		const pengaduan = await prisma.tabelPengaduan.findUnique({
+			where: { idPengaduan: id },
+			select: { dokumenLaporan: true },
+		});
+
+		if (!pengaduan) {
+			return res
+				.status(404)
+				.json({ success: false, message: "Data pengaduan tidak ditemukan" });
+		}
+
+		return serveUploadedFile(res, pengaduan.dokumenLaporan, "dokumen-laporan");
+	} catch (error) {
+		next(error);
+	}
+};
+
+// Endpoint untuk melihat / membuka Foto Keluhan
+export const viewFotoKeluhan = async (req, res, next) => {
+	try {
+		const { id } = req.params;
+
+		const pengaduan = await prisma.tabelPengaduan.findUnique({
+			where: { idPengaduan: id },
+			select: { fotoKeluhan: true },
+		});
+
+		if (!pengaduan) {
+			return res
+				.status(404)
+				.json({ success: false, message: "Data pengaduan tidak ditemukan" });
+		}
+
+		return serveUploadedFile(res, pengaduan.fotoKeluhan, "foto-keluhan");
 	} catch (error) {
 		next(error);
 	}

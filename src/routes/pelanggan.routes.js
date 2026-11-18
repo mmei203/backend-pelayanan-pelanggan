@@ -7,6 +7,8 @@ import {
 	updatePelanggan,
 	getHistory,
 	printPengaduan,
+	viewDokumenLaporan,
+	viewFotoKeluhan,
 } from "../controllers/pelanggan.controllers.js";
 import { uploadMiddleware } from "../middlewares/upload.middleware.js";
 
@@ -16,6 +18,8 @@ router.get("/pelanggan", getAllPelanggan);
 router.get("/pelanggan/filter", getPelangganByStatus);
 router.get("/pelanggan/history", getHistory);
 router.get("/pelanggan/:id/print", printPengaduan);
+router.get("/pelanggan/:id/dokumen", viewDokumenLaporan);
+router.get("/pelanggan/:id/foto", viewFotoKeluhan);
 router.get("/pelanggan/:id", getPelangganById);
 router.post("/pelanggan", createPelanggan);
 

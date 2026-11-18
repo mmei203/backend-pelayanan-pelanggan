@@ -243,3 +243,115 @@ export const logout = async (req, res) => {
 		message: "Logout berhasil. Silakan hapus token di sisi klien/frontend.",
 	});
 };
+
+// 5. FORGOT PASSWORD (Minta Token Reset)
+export const forgotPassword = async (req, res, next) => {
+	try {
+		const { email } = req.body;
+
+		if (!email) {
+			return res.status(400).json({
+				success: false,
+				message: "Email wajib diisi.",
+			});
+		}
+
+		const user = await prisma.tabelUser.findFirst({
+			where: { email },
+		});
+
+		if (!user) {
+			return res.status(404).json({
+				success: false,
+				message: "Akun dengan email tersebut tidak ditemukan.",
+			});
+		}
+
+		// Buat reset token dengan durasi 15 menit
+		// Sisipkan potongan password saat ini sebagai salt unik agar token otomatis invalid jika password sudah pernah diubah
+		const secret = JWT_SECRET + user.password;
+		const resetToken = jwt.sign(
+			{ idUser: user.idUser, email: user.email },
+			secret,
+			{ expiresIn: "15m" }
+		);
+
+		res.status(200).json({
+			success: true,
+			message: "Token reset password berhasil dibuat (berlaku 15 menit).",
+			data: {
+				email: user.email,
+				resetToken,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+// 6. RESET PASSWORD (Simpan Password Baru dengan Token)
+export const resetPassword = async (req, res, next) => {
+	try {
+		const { resetToken, newPassword } = req.body;
+
+		if (!resetToken || !newPassword) {
+			return res.status(400).json({
+				success: false,
+				message: "Token reset dan password baru wajib diisi.",
+			});
+		}
+
+		if (newPassword.length < 6) {
+			return res.status(400).json({
+				success: false,
+				message: "Password baru minimal 6 karakter.",
+			});
+		}
+
+		// Decode token tanpa verifikasi terlebih dahulu untuk mengambil idUser
+		const decoded = jwt.decode(resetToken);
+		if (!decoded || !decoded.idUser) {
+			return res.status(400).json({
+				success: false,
+				message: "Token reset tidak valid.",
+			});
+		}
+
+		// Ambil user dari database
+		const user = await prisma.tabelUser.findUnique({
+			where: { idUser: decoded.idUser },
+		});
+
+		if (!user) {
+			return res.status(404).json({
+				success: false,
+				message: "User tidak ditemukan.",
+			});
+		}
+
+		// Verifikasi token menggunakan secret unik (JWT_SECRET + user.password)
+		const secret = JWT_SECRET + user.password;
+		try {
+			jwt.verify(resetToken, secret);
+		} catch (err) {
+			return res.status(400).json({
+				success: false,
+				message: "Token reset sudah kedaluwarsa atau sudah pernah digunakan.",
+			});
+		}
+
+		// Hash password baru dan simpan
+		const hashedPassword = await bcrypt.hash(newPassword, 10);
+		await prisma.tabelUser.update({
+			where: { idUser: user.idUser },
+			data: { password: hashedPassword },
+		});
+
+		res.status(200).json({
+			success: true,
+			message: "Password berhasil di-reset. Silakan login kembali dengan password baru Anda.",
+		});
+	} catch (error) {
+		next(error);
+	}
+};
