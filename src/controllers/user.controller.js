@@ -1,21 +1,33 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "../config/db.js";
 
+const mapUser = (u) => {
+	if (!u) return null;
+	return {
+		idUser: u.ID_USER,
+		namaUser: u.NAMA_USER,
+		email: u.EMAIL,
+		username: u.USERNAME,
+		role: u.ROLE,
+		createdAt: u.CREATED_AT,
+	};
+};
+
 export const getAllUsers = async (req, res, next) => {
 	try {
-		const users = await prisma.tabelUser.findMany({
+		const users = await prisma.TABEL_USER.findMany({
 			select: {
-				idUser: true,
-				namaUser: true,
-				email: true,
-				username: true,
-				role: true,
-				createdAt: true,
+				ID_USER: true,
+				NAMA_USER: true,
+				EMAIL: true,
+				USERNAME: true,
+				ROLE: true,
+				CREATED_AT: true,
 			},
-			orderBy: { createdAt: "desc" },
+			orderBy: { CREATED_AT: "desc" },
 		});
 
-		res.status(200).json({ success: true, data: users });
+		res.status(200).json({ success: true, data: users.map(mapUser) });
 	} catch (error) {
 		next(error);
 	}
@@ -31,22 +43,29 @@ export const createUser = async (req, res, next) => {
 			hashedPassword = await bcrypt.hash(password, 10);
 		}
 
-		const newUser = await prisma.tabelUser.create({
-			data: { namaUser, email, username, password: hashedPassword, role },
+		const newUser = await prisma.TABEL_USER.create({
+			data: {
+				NAMA_USER: namaUser,
+				EMAIL: email,
+				USERNAME: username,
+				PASSWORD: hashedPassword,
+				ROLE: role,
+				CREATED_AT: new Date(),
+			},
 			select: {
-				idUser: true,
-				namaUser: true,
-				email: true,
-				username: true,
-				role: true,
-				createdAt: true,
+				ID_USER: true,
+				NAMA_USER: true,
+				EMAIL: true,
+				USERNAME: true,
+				ROLE: true,
+				CREATED_AT: true,
 			},
 		});
 
 		res.status(201).json({
 			success: true,
 			message: "User berhasil dibuat",
-			data: newUser,
+			data: mapUser(newUser),
 		});
 	} catch (error) {
 		next(error);
@@ -58,8 +77,8 @@ export const updateUser = async (req, res, next) => {
 		const { id } = req.params;
 		const { namaUser, email, username, password, role } = req.body;
 
-		const userExist = await prisma.tabelUser.findUnique({
-			where: { idUser: id },
+		const userExist = await prisma.TABEL_USER.findUnique({
+			where: { ID_USER: id },
 		});
 
 		if (!userExist) {
@@ -68,29 +87,30 @@ export const updateUser = async (req, res, next) => {
 				.json({ success: false, message: "User tidak ditemukan" });
 		}
 
-		const updatedUser = await prisma.tabelUser.update({
-			where: { idUser: id },
-			data: {
-				...(namaUser && { namaUser }),
-				...(email && { email }),
-				...(username && { username }),
-				...(password && { password }),
-				...(role && { role }),
-			},
+		const data = {};
+		if (namaUser) data.NAMA_USER = namaUser;
+		if (email) data.EMAIL = email;
+		if (username) data.USERNAME = username;
+		if (password) data.PASSWORD = password;
+		if (role) data.ROLE = role;
+
+		const updatedUser = await prisma.TABEL_USER.update({
+			where: { ID_USER: id },
+			data,
 			select: {
-				idUser: true,
-				namaUser: true,
-				email: true,
-				username: true,
-				role: true,
-				createdAt: true,
+				ID_USER: true,
+				NAMA_USER: true,
+				EMAIL: true,
+				USERNAME: true,
+				ROLE: true,
+				CREATED_AT: true,
 			},
 		});
 
 		res.status(200).json({
 			success: true,
 			message: "User berhasil diperbarui",
-			data: updatedUser,
+			data: mapUser(updatedUser),
 		});
 	} catch (error) {
 		next(error);

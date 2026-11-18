@@ -33,34 +33,90 @@ const parseSaluranKeluhan = (value) => {
 	return undefined;
 };
 
+// ─── FIELD MAPPERS (DB UPPER_SNAKE_CASE <-> app camelCase) ───────────────────
+
+const mapPelangganFromDb = (row) => {
+	if (!row) return null;
+	return {
+		idPelanggan: row.ID_PELANGGAN,
+		noKontakPdam: row.NO_KONTAK_PDAM,
+		namaPelanggan: row.NAMA_PELANGGAN,
+		noHp: row.NO_HP,
+		alamat: row.ALAMAT,
+		createdAt: row.CREATED_AT,
+	};
+};
+
+const mapUserFromDb = (row) => {
+	if (!row) return null;
+	return {
+		idUser: row.ID_USER,
+		namaUser: row.NAMA_USER,
+		email: row.EMAIL,
+		username: row.USERNAME,
+		role: row.ROLE,
+		createdAt: row.CREATED_AT,
+	};
+};
+
+const mapPengaduanFromDb = (row) => {
+	if (!row) return null;
+	return {
+		idPengaduan: row.ID_PENGADUAN,
+		idPelanggan: row.ID_PELANGGAN,
+		idUserPenerima: row.ID_USER_PENERIMA,
+		idUserPenanganan: row.ID_USER_PENANGANAN,
+		keluhan: row.KELUHAN,
+		status: row.STATUS,
+		latitude: row.LATITUDE,
+		longitude: row.LONGITUDE,
+		dokumenLaporan: row.DOKUMEN_LAPORAN,
+		fotoKeluhan: row.FOTO_KELUHAN,
+		tanggalDiterima: row.TANGGAL_DITERIMA,
+		tanggalDiproses: row.TANGGAL_DIPROSES,
+		tanggalSelesai: row.TANGGAL_SELESAI,
+		createdAt: row.CREATED_AT,
+		updatedAt: row.UPDATED_AT,
+		saluranKeluhan: row.SALURAN_KELUHAN,
+		sumberAduan: row.SUMBER_ADUAN,
+	};
+};
+
 // ─── INTERNAL HELPERS ────────────────────────────────────────────────────────
 
 /**
  * Ambil data pelanggan, penerima, dan penanganan secara terpisah
- * dan gabungkan ke dalam objek pengaduan.
+ * dan gabungkan ke dalam objek pengaduan (sudah dimap ke camelCase).
  */
-const enrichPengaduan = async (pengaduan) => {
-	if (!pengaduan) return null;
+const enrichPengaduan = async (pengaduanDb) => {
+	if (!pengaduanDb) return null;
+
+	const pengaduan = mapPengaduanFromDb(pengaduanDb);
 
 	const [pelanggan, penerima, penangani] = await Promise.all([
 		pengaduan.idPelanggan
-			? prisma.tabelPelanggan.findUnique({ where: { idPelanggan: pengaduan.idPelanggan } })
+			? prisma.TABEL_PELANGGAN.findUnique({ where: { ID_PELANGGAN: pengaduan.idPelanggan } })
 			: null,
 		pengaduan.idUserPenerima
-			? prisma.tabelUser.findUnique({
-					where: { idUser: pengaduan.idUserPenerima },
-					select: { namaUser: true, role: true },
+			? prisma.TABEL_USER.findUnique({
+					where: { ID_USER: pengaduan.idUserPenerima },
+					select: { ID_USER: true, NAMA_USER: true, ROLE: true },
 			  })
 			: null,
 		pengaduan.idUserPenanganan
-			? prisma.tabelUser.findUnique({
-					where: { idUser: pengaduan.idUserPenanganan },
-					select: { namaUser: true, role: true },
+			? prisma.TABEL_USER.findUnique({
+					where: { ID_USER: pengaduan.idUserPenanganan },
+					select: { ID_USER: true, NAMA_USER: true, ROLE: true },
 			  })
 			: null,
 	]);
 
-	return { ...pengaduan, pelanggan, penerima, penangani };
+	return {
+		...pengaduan,
+		pelanggan: mapPelangganFromDb(pelanggan),
+		penerima: mapUserFromDb(penerima),
+		penangani: mapUserFromDb(penangani),
+	};
 };
 
 /**
@@ -69,27 +125,33 @@ const enrichPengaduan = async (pengaduan) => {
 const enrichMany = async (list) => {
 	if (!list || list.length === 0) return [];
 
+	const mapped = list.map(mapPengaduanFromDb);
+
 	// Kumpulkan semua id unik
-	const pelangganIds = [...new Set(list.map((p) => p.idPelanggan).filter(Boolean))];
+	const pelangganIds = [...new Set(mapped.map((p) => p.idPelanggan).filter(Boolean))];
 	const userIds = [
 		...new Set([
-			...list.map((p) => p.idUserPenerima),
-			...list.map((p) => p.idUserPenanganan),
+			...mapped.map((p) => p.idUserPenerima),
+			...mapped.map((p) => p.idUserPenanganan),
 		].filter(Boolean)),
 	];
 
 	const [pelangganList, userList] = await Promise.all([
-		prisma.tabelPelanggan.findMany({ where: { idPelanggan: { in: pelangganIds } } }),
-		prisma.tabelUser.findMany({
-			where: { idUser: { in: userIds } },
-			select: { idUser: true, namaUser: true, role: true },
-		}),
+		pelangganIds.length
+			? prisma.TABEL_PELANGGAN.findMany({ where: { ID_PELANGGAN: { in: pelangganIds } } })
+			: [],
+		userIds.length
+			? prisma.TABEL_USER.findMany({
+					where: { ID_USER: { in: userIds } },
+					select: { ID_USER: true, NAMA_USER: true, ROLE: true },
+			  })
+			: [],
 	]);
 
-	const pelangganMap = Object.fromEntries(pelangganList.map((p) => [p.idPelanggan, p]));
-	const userMap = Object.fromEntries(userList.map((u) => [u.idUser, u]));
+	const pelangganMap = Object.fromEntries(pelangganList.map((p) => [p.ID_PELANGGAN, mapPelangganFromDb(p)]));
+	const userMap = Object.fromEntries(userList.map((u) => [u.ID_USER, mapUserFromDb(u)]));
 
-	return list.map((pengaduan) => ({
+	return mapped.map((pengaduan) => ({
 		...pengaduan,
 		pelanggan: pelangganMap[pengaduan.idPelanggan] || null,
 		penerima: userMap[pengaduan.idUserPenerima] || null,
@@ -109,25 +171,25 @@ export const getAllPelanggan = async (req, res, next) => {
 		// Jika search by namaPelanggan: ambil id pelanggan dulu lalu filter pengaduan
 		let idPelangganFilter;
 		if (search) {
-			const matchedPelanggan = await prisma.tabelPelanggan.findMany({
-				where: { namaPelanggan: { contains: search } },
-				select: { idPelanggan: true },
+			const matchedPelanggan = await prisma.TABEL_PELANGGAN.findMany({
+				where: { NAMA_PELANGGAN: { contains: search } },
+				select: { ID_PELANGGAN: true },
 			});
-			idPelangganFilter = matchedPelanggan.map((p) => p.idPelanggan);
+			idPelangganFilter = matchedPelanggan.map((p) => p.ID_PELANGGAN);
 			if (idPelangganFilter.length === 0) {
 				return res.status(200).json({ success: true, data: [] });
 			}
 		}
 
 		const whereCondition = {
-			...(idPelangganFilter && { idPelanggan: { in: idPelangganFilter } }),
-			...(parsedSumber && { sumberAduan: parsedSumber }),
-			...(parsedSaluran && { saluranKeluhan: parsedSaluran }),
+			...(idPelangganFilter && { ID_PELANGGAN: { in: idPelangganFilter } }),
+			...(parsedSumber && { SUMBER_ADUAN: parsedSumber }),
+			...(parsedSaluran && { SALURAN_KELUHAN: parsedSaluran }),
 		};
 
-		const pengaduanList = await prisma.tabelPengaduan.findMany({
+		const pengaduanList = await prisma.TABEL_PENGADUAN.findMany({
 			where: whereCondition,
-			orderBy: { createdAt: "desc" },
+			orderBy: { CREATED_AT: "desc" },
 		});
 
 		const enriched = await enrichMany(pengaduanList);
@@ -151,13 +213,13 @@ export const getPelangganByStatus = async (req, res, next) => {
 		const parsedSumber = parseSumberAduan(sumberAduan);
 		const parsedSaluran = parseSaluranKeluhan(saluranKeluhan);
 
-		const pengaduanList = await prisma.tabelPengaduan.findMany({
+		const pengaduanList = await prisma.TABEL_PENGADUAN.findMany({
 			where: {
-				...(status && { status: status.toUpperCase() }),
-				...(parsedSumber && { sumberAduan: parsedSumber }),
-				...(parsedSaluran && { saluranKeluhan: parsedSaluran }),
+				...(status && { STATUS: status.toUpperCase() }),
+				...(parsedSumber && { SUMBER_ADUAN: parsedSumber }),
+				...(parsedSaluran && { SALURAN_KELUHAN: parsedSaluran }),
 			},
-			orderBy: { createdAt: "desc" },
+			orderBy: { CREATED_AT: "desc" },
 		});
 
 		const enriched = await enrichMany(pengaduanList);
@@ -178,8 +240,8 @@ export const getPelangganById = async (req, res, next) => {
 	try {
 		const { id } = req.params;
 
-		const pengaduan = await prisma.tabelPengaduan.findUnique({
-			where: { idPengaduan: id },
+		const pengaduan = await prisma.TABEL_PENGADUAN.findUnique({
+			where: { ID_PENGADUAN: id },
 		});
 
 		if (!pengaduan) {
@@ -228,24 +290,33 @@ export const createPelanggan = async (req, res, next) => {
 		const resolvedSaluranKeluhan = parseSaluranKeluhan(saluranKeluhan) || "Datang_Langsung";
 
 		const result = await prisma.$transaction(async (tx) => {
-			const pelangganBaru = await tx.tabelPelanggan.create({
-				data: { namaPelanggan, noHp, noKontakPdam, alamat },
-			});
-
-			const pengaduanBaru = await tx.tabelPengaduan.create({
+			const pelangganBaru = await tx.TABEL_PELANGGAN.create({
 				data: {
-					idPelanggan: pelangganBaru.idPelanggan,
-					idUserPenerima: idUserCS,
-					keluhan,
-					status: "PENDING",
-					tanggalDiterima: new Date(),
-					createdAt: new Date(),
-					sumberAduan: resolvedSumberAduan,
-					saluranKeluhan: resolvedSaluranKeluhan,
+					NAMA_PELANGGAN: namaPelanggan,
+					NO_HP: noHp,
+					NO_KONTAK_PDAM: noKontakPdam,
+					ALAMAT: alamat,
+					CREATED_AT: new Date(),
 				},
 			});
 
-			return { pelangganBaru, pengaduanBaru };
+			const pengaduanBaru = await tx.TABEL_PENGADUAN.create({
+				data: {
+					ID_PELANGGAN: pelangganBaru.ID_PELANGGAN,
+					ID_USER_PENERIMA: idUserCS,
+					KELUHAN: keluhan,
+					STATUS: "PENDING",
+					TANGGAL_DITERIMA: new Date(),
+					CREATED_AT: new Date(),
+					SUMBER_ADUAN: resolvedSumberAduan,
+					SALURAN_KELUHAN: resolvedSaluranKeluhan,
+				},
+			});
+
+			return {
+				pelangganBaru: mapPelangganFromDb(pelangganBaru),
+				pengaduanBaru: mapPengaduanFromDb(pengaduanBaru),
+			};
 		});
 
 		res.status(201).json({
@@ -275,8 +346,8 @@ export const updatePelanggan = async (req, res, next) => {
 			saluranKeluhan,
 		} = req.body;
 
-		const pengaduanExist = await prisma.tabelPengaduan.findUnique({
-			where: { idPengaduan: id },
+		const pengaduanExist = await prisma.TABEL_PENGADUAN.findUnique({
+			where: { ID_PENGADUAN: id },
 		});
 
 		if (!pengaduanExist) {
@@ -285,32 +356,32 @@ export const updatePelanggan = async (req, res, next) => {
 
 		// 1. Update Data Pelanggan jika ada
 		if (namaPelanggan || noHp || noKontakPdam !== undefined || alamat) {
-			await prisma.tabelPelanggan.update({
-				where: { idPelanggan: pengaduanExist.idPelanggan },
+			await prisma.TABEL_PELANGGAN.update({
+				where: { ID_PELANGGAN: pengaduanExist.ID_PELANGGAN },
 				data: {
-					...(namaPelanggan && { namaPelanggan }),
-					...(noHp && { noHp }),
-					...(noKontakPdam !== undefined && { noKontakPdam }),
-					...(alamat && { alamat }),
+					...(namaPelanggan && { NAMA_PELANGGAN: namaPelanggan }),
+					...(noHp && { NO_HP: noHp }),
+					...(noKontakPdam !== undefined && { NO_KONTAK_PDAM: noKontakPdam }),
+					...(alamat && { ALAMAT: alamat }),
 				},
 			});
 		}
 
 		const extraPengaduanFields = {};
 		const parsedSumber = parseSumberAduan(sumberAduan);
-		if (parsedSumber) extraPengaduanFields.sumberAduan = parsedSumber;
+		if (parsedSumber) extraPengaduanFields.SUMBER_ADUAN = parsedSumber;
 		const parsedSaluran = parseSaluranKeluhan(saluranKeluhan);
-		if (parsedSaluran) extraPengaduanFields.saluranKeluhan = parsedSaluran;
+		if (parsedSaluran) extraPengaduanFields.SALURAN_KELUHAN = parsedSaluran;
 
 		// 2. Update berdasarkan status
 		if (rawStatus === "ON PROGRESS") {
-			const updated = await prisma.tabelPengaduan.update({
-				where: { idPengaduan: id },
+			const updated = await prisma.TABEL_PENGADUAN.update({
+				where: { ID_PENGADUAN: id },
 				data: {
-					status: "ON PROGRESS",
-					...(operatorId && { idUserPenanganan: operatorId }),
-					...(keluhan && { keluhan }),
-					tanggalDiproses: new Date(),
+					STATUS: "ON PROGRESS",
+					...(operatorId && { ID_USER_PENANGANAN: operatorId }),
+					...(keluhan && { KELUHAN: keluhan }),
+					TANGGAL_DIPROSES: new Date(),
 					...extraPengaduanFields,
 				},
 			});
@@ -328,20 +399,20 @@ export const updatePelanggan = async (req, res, next) => {
 		}
 
 		if (rawStatus === "SELESAI") {
-			const dokumenLaporanPath = req.files?.dokumenLaporan?.[0]?.path || pengaduanExist.dokumenLaporan;
-			const fotoKeluhanPath = req.files?.fotoKeluhan?.[0]?.path || pengaduanExist.fotoKeluhan;
+			const dokumenLaporanPath = req.files?.dokumenLaporan?.[0]?.path || pengaduanExist.DOKUMEN_LAPORAN;
+			const fotoKeluhanPath = req.files?.fotoKeluhan?.[0]?.path || pengaduanExist.FOTO_KELUHAN;
 
-			const updated = await prisma.tabelPengaduan.update({
-				where: { idPengaduan: id },
+			const updated = await prisma.TABEL_PENGADUAN.update({
+				where: { ID_PENGADUAN: id },
 				data: {
-					status: "SELESAI",
-					...(latitude && { latitude }),
-					...(longitude && { longitude }),
-					...(dokumenLaporanPath && { dokumenLaporan: dokumenLaporanPath }),
-					...(fotoKeluhanPath && { fotoKeluhan: fotoKeluhanPath }),
-					...(keluhan && { keluhan }),
-					...(operatorId && { idUserPenanganan: operatorId }),
-					tanggalSelesai: new Date(),
+					STATUS: "SELESAI",
+					...(latitude && { LATITUDE: latitude }),
+					...(longitude && { LONGITUDE: longitude }),
+					...(dokumenLaporanPath && { DOKUMEN_LAPORAN: dokumenLaporanPath }),
+					...(fotoKeluhanPath && { FOTO_KELUHAN: fotoKeluhanPath }),
+					...(keluhan && { KELUHAN: keluhan }),
+					...(operatorId && { ID_USER_PENANGANAN: operatorId }),
+					TANGGAL_SELESAI: new Date(),
 					...extraPengaduanFields,
 				},
 			});
@@ -360,11 +431,11 @@ export const updatePelanggan = async (req, res, next) => {
 
 		// 3. Update teks saja tanpa ubah status
 		const updateDataPayload = { ...extraPengaduanFields };
-		if (keluhan) updateDataPayload.keluhan = keluhan;
-		if (operatorId) updateDataPayload.idUserPenanganan = operatorId;
+		if (keluhan) updateDataPayload.KELUHAN = keluhan;
+		if (operatorId) updateDataPayload.ID_USER_PENANGANAN = operatorId;
 
-		const updated = await prisma.tabelPengaduan.update({
-			where: { idPengaduan: id },
+		const updated = await prisma.TABEL_PENGADUAN.update({
+			where: { ID_PENGADUAN: id },
 			data: updateDataPayload,
 		});
 
@@ -392,24 +463,24 @@ export const getHistory = async (req, res, next) => {
 
 		let idPelangganFilter;
 		if (search) {
-			const matchedPelanggan = await prisma.tabelPelanggan.findMany({
-				where: { namaPelanggan: { contains: search } },
-				select: { idPelanggan: true },
+			const matchedPelanggan = await prisma.TABEL_PELANGGAN.findMany({
+				where: { NAMA_PELANGGAN: { contains: search } },
+				select: { ID_PELANGGAN: true },
 			});
-			idPelangganFilter = matchedPelanggan.map((p) => p.idPelanggan);
+			idPelangganFilter = matchedPelanggan.map((p) => p.ID_PELANGGAN);
 			if (idPelangganFilter.length === 0) {
 				return res.status(200).json({ success: true, data: [] });
 			}
 		}
 
-		const history = await prisma.tabelPengaduan.findMany({
+		const history = await prisma.TABEL_PENGADUAN.findMany({
 			where: {
-				status: "SELESAI",
-				...(idPelangganFilter && { idPelanggan: { in: idPelangganFilter } }),
-				...(parsedSumber && { sumberAduan: parsedSumber }),
-				...(parsedSaluran && { saluranKeluhan: parsedSaluran }),
+				STATUS: "SELESAI",
+				...(idPelangganFilter && { ID_PELANGGAN: { in: idPelangganFilter } }),
+				...(parsedSumber && { SUMBER_ADUAN: parsedSumber }),
+				...(parsedSaluran && { SALURAN_KELUHAN: parsedSaluran }),
 			},
-			orderBy: { tanggalSelesai: "desc" },
+			orderBy: { TANGGAL_SELESAI: "desc" },
 		});
 
 		const enriched = await enrichMany(history);
@@ -430,8 +501,8 @@ export const printPengaduan = async (req, res, next) => {
 	try {
 		const { id } = req.params;
 
-		const pengaduan = await prisma.tabelPengaduan.findUnique({
-			where: { idPengaduan: id },
+		const pengaduan = await prisma.TABEL_PENGADUAN.findUnique({
+			where: { ID_PENGADUAN: id },
 		});
 
 		if (!pengaduan) {
@@ -477,16 +548,16 @@ export const viewDokumenLaporan = async (req, res, next) => {
 	try {
 		const { id } = req.params;
 
-		const pengaduan = await prisma.tabelPengaduan.findUnique({
-			where: { idPengaduan: id },
-			select: { dokumenLaporan: true },
+		const pengaduan = await prisma.TABEL_PENGADUAN.findUnique({
+			where: { ID_PENGADUAN: id },
+			select: { DOKUMEN_LAPORAN: true },
 		});
 
 		if (!pengaduan) {
 			return res.status(404).json({ success: false, message: "Data pengaduan tidak ditemukan" });
 		}
 
-		return serveUploadedFile(res, pengaduan.dokumenLaporan, "dokumen-laporan");
+		return serveUploadedFile(res, pengaduan.DOKUMEN_LAPORAN, "dokumen-laporan");
 	} catch (error) {
 		next(error);
 	}
@@ -496,16 +567,16 @@ export const viewFotoKeluhan = async (req, res, next) => {
 	try {
 		const { id } = req.params;
 
-		const pengaduan = await prisma.tabelPengaduan.findUnique({
-			where: { idPengaduan: id },
-			select: { fotoKeluhan: true },
+		const pengaduan = await prisma.TABEL_PENGADUAN.findUnique({
+			where: { ID_PENGADUAN: id },
+			select: { FOTO_KELUHAN: true },
 		});
 
 		if (!pengaduan) {
 			return res.status(404).json({ success: false, message: "Data pengaduan tidak ditemukan" });
 		}
 
-		return serveUploadedFile(res, pengaduan.fotoKeluhan, "foto-keluhan");
+		return serveUploadedFile(res, pengaduan.FOTO_KELUHAN, "foto-keluhan");
 	} catch (error) {
 		next(error);
 	}
