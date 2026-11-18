@@ -177,7 +177,15 @@ export const updateProfile = async (req, res, next) => {
 	}
 };
 
-// 4. FORGOT PASSWORD (placeholder - requires email/SMS infra)
+// 4. LOGOUT USER
+export const logout = async (req, res) => {
+	res.status(200).json({
+		success: true,
+		message: "Logout berhasil. Silakan hapus token di sisi klien/frontend.",
+	});
+};
+
+// 5. FORGOT PASSWORD (placeholder - requires email/SMS infra)
 export const forgotPassword = async (req, res, next) => {
 	try {
 		const { identifier } = req.body;
