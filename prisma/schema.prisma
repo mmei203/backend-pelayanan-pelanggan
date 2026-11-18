@@ -6,63 +6,6 @@ datasource db {
   provider = "mysql"
 }
 
-model TabelPelanggan {
-  idPelanggan   String           @id @default(uuid()) @map("ID_PELANGGAN") @db.VarChar(36)
-  noKontakPdam  String?          @map("NO_KONTAK_PDAM") @db.VarChar(50)
-  namaPelanggan String           @map("NAMA_PELANGGAN") @db.VarChar(255)
-  noHp          String           @map("NO_HP") @db.VarChar(20)
-  alamat        String?          @map("ALAMAT") @db.Text
-  createdAt     DateTime?        @map("CREATED_AT") @db.Timestamp(0)
-  pengaduan     TabelPengaduan[]
-
-  @@index([noKontakPdam], map: "AK_IDENTIFIER_NO_KONTAK_PDAM")
-  @@map("TABEL_PELANGGAN")
-}
-
-model TabelUser {
-  idUser             String           @id @default(uuid()) @map("ID_USER") @db.VarChar(36)
-  namaUser           String           @map("NAMA_USER") @db.VarChar(100)
-  email              String           @map("EMAIL") @db.VarChar(255)
-  username           String           @map("USERNAME") @db.VarChar(255)
-  password           String           @map("PASSWORD") @db.VarChar(255)
-  role               TABEL_USER_ROLE  @map("ROLE")
-  createdAt          DateTime?        @map("CREATED_AT") @db.Timestamp(0)
-  pengaduanDitangani TabelPengaduan[] @relation("Menangani")
-  pengaduanDiterima  TabelPengaduan[] @relation("Menerima")
-
-  @@index([username], map: "AK_IDENTIFIER_USERNAME")
-  @@index([email], map: "AK_IDENTIFIRE_EMAIL")
-  @@map("TABEL_USER")
-}
-
-model TabelPengaduan {
-  idPengaduan      String                          @id @default(uuid()) @map("ID_PENGADUAN") @db.VarChar(36)
-  idPelanggan      String                          @map("ID_PELANGGAN") @db.VarChar(36)
-  idUserPenerima   String                          @map("ID_USER_PENERIMA") @db.VarChar(36)
-  idUserPenanganan String?                         @map("ID_USER_PENANGANAN") @db.VarChar(36)
-  keluhan          String                          @map("KELUHAN") @db.Text
-  status           String                          @map("STATUS") @db.VarChar(20)
-  latitude         String?                         @map("LATITUDE") @db.VarChar(50)
-  longitude        String?                         @map("LONGITUDE") @db.VarChar(50)
-  dokumenLaporan   String?                         @map("DOKUMEN_LAPORAN") @db.VarChar(500)
-  fotoKeluhan      String?                         @map("FOTO_KELUHAN") @db.VarChar(255)
-  tanggalDiterima  DateTime                        @map("TANGGAL_DITERIMA") @db.DateTime(0)
-  tanggalDiproses  DateTime?                       @map("TANGGAL_DIPROSES") @db.DateTime(0)
-  tanggalSelesai   DateTime?                       @map("TANGGAL_SELESAI") @db.DateTime(0)
-  createdAt        DateTime                        @map("CREATED_AT") @db.Timestamp(0)
-  updatedAt        DateTime?                       @updatedAt @map("UPDATED_AT") @db.Timestamp(0)
-  saluranKeluhan   TABEL_PENGADUAN_SALURAN_KELUHAN @map("SALURAN_KELUHAN")
-  sumberAduan      TABEL_PENGADUAN_SUMBER_ADUAN    @map("SUMBER_ADUAN")
-  pelanggan        TabelPelanggan                  @relation(fields: [idPelanggan], references: [idPelanggan], onUpdate: Restrict, map: "FK_MEMILIKI")
-  penangani        TabelUser?                      @relation("Menangani", fields: [idUserPenanganan], references: [idUser], onDelete: Restrict, onUpdate: Restrict, map: "TABEL_PENGADUAN_ID_USER_PENANGANAN_fkey")
-  penerima         TabelUser                       @relation("Menerima", fields: [idUserPenerima], references: [idUser], onUpdate: Restrict, map: "TABEL_PENGADUAN_ID_USER_PENERIMA_fkey")
-
-  @@index([idPelanggan], map: "FK_MEMBUAT")
-  @@index([idUserPenanganan], map: "FK_MENANGANI")
-  @@index([idUserPenerima], map: "FK_MENERIMA")
-  @@map("TABEL_PENGADUAN")
-}
-
 model History {
   id             String    @id
   pelangganId    String    @unique
@@ -88,15 +31,48 @@ model Pelanggan {
   History         History?
 }
 
-enum TABEL_PENGADUAN_SALURAN_KELUHAN {
-  WhatsApp
-  Telepon
-  Datang_Ketempat @map("Datang Ketempat")
+model TABEL_PELANGGAN {
+  ID_PELANGGAN   String    @id @db.VarChar(36)
+  NO_KONTAK_PDAM String?   @db.VarChar(50)
+  NAMA_PELANGGAN String    @db.VarChar(255)
+  NO_HP          String    @db.VarChar(20)
+  ALAMAT         String?   @db.Text
+  CREATED_AT     DateTime? @db.Timestamp(0)
+
+  @@index([NO_KONTAK_PDAM], map: "AK_IDENTIFIER_NO_KONTAK_PDAM")
 }
 
-enum TABEL_PENGADUAN_SUMBER_ADUAN {
-  Pelanggan
-  Non_Pelanggan @map("Non Pelanggan")
+model TABEL_PENGADUAN {
+  ID_PENGADUAN       String                          @id @db.VarChar(36)
+  ID_PELANGGAN       String                          @db.VarChar(36)
+  ID_USER_PENERIMA   String                          @db.VarChar(36)
+  ID_USER_PENANGANAN String?                         @db.VarChar(36)
+  KELUHAN            String                          @db.Text
+  STATUS             String                          @db.VarChar(20)
+  LATITUDE           String?                         @db.VarChar(50)
+  LONGITUDE          String?                         @db.VarChar(50)
+  DOKUMEN_LAPORAN    String?                         @db.VarChar(500)
+  FOTO_KELUHAN       String?                         @db.VarChar(255)
+  TANGGAL_DITERIMA   DateTime                        @db.DateTime(0)
+  TANGGAL_DIPROSES   DateTime?                       @db.DateTime(0)
+  TANGGAL_SELESAI    DateTime?                       @db.DateTime(0)
+  CREATED_AT         DateTime                        @db.Timestamp(0)
+  UPDATED_AT         DateTime?                       @db.Timestamp(0)
+  SALURAN_KELUHAN    TABEL_PENGADUAN_SALURAN_KELUHAN
+  SUMBER_ADUAN       TABEL_PENGADUAN_SUMBER_ADUAN
+}
+
+model TABEL_USER {
+  ID_USER    String          @id @db.VarChar(36)
+  NAMA_USER  String          @db.VarChar(100)
+  EMAIL      String          @db.VarChar(255)
+  USERNAME   String          @db.VarChar(255)
+  PASSWORD   String          @db.VarChar(255)
+  ROLE       TABEL_USER_ROLE
+  CREATED_AT DateTime?       @db.Timestamp(0)
+
+  @@index([USERNAME], map: "AK_IDENTIFIER_USERNAME")
+  @@index([EMAIL], map: "AK_IDENTIFIRE_EMAIL")
 }
 
 enum TABEL_USER_ROLE {
@@ -110,4 +86,15 @@ enum Pelanggan_statusPelanggan {
   PENDING
   ON_PROGRESS
   SELESAI
+}
+
+enum TABEL_PENGADUAN_SALURAN_KELUHAN {
+  Datang_Langsung @map("Datang Langsung")
+  Via_Telepon     @map("Via Telepon")
+  Temuan_Lapangan @map("Temuan Lapangan")
+}
+
+enum TABEL_PENGADUAN_SUMBER_ADUAN {
+  Pelanggan
+  Non_Pelangan @map("Non Pelangan")
 }
