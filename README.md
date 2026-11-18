@@ -1,5 +1,5 @@
 FILE DB.JS DI CONFIG JANGAN PERNAH DI OTAK ATIK
-BELUM ADA DOKUMENTASI
+Dokumentasi API tersedia di [docs/index.html](docs/index.html). ID Pengaduan dibuat otomatis oleh server saat aduan dibuat.
 
 # how to use it (in case aku ngulang)
 <code>

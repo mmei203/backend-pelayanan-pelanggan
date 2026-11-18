@@ -429,7 +429,7 @@
         <span class="path">/api/pelanggan</span>
       </div>
       <div class="endpoint-body">
-        <div class="endpoint-desc">Membuat aduan baru pelanggan (dibuat oleh CS).</div>
+        <div class="endpoint-desc">Membuat aduan baru pelanggan (dibuat oleh CS). ID Pengaduan (UUID) dibuat otomatis oleh server; tidak perlu dikirim di request.</div>
         <div class="tab-title">Request Body (JSON):</div>
         <pre><code class="language-json">{
   "idUserCS": "3c90a1b2-4d5e-6f7a-8b9c-0d1e2f3a4b5c",
@@ -438,8 +438,8 @@
   "noKontakPdam": "12345678", // Kosongkan jika Non Pelanggan
   "alamat": "Jl. Kertak Hanyar No. 12",
   "keluhan": "Pipa bocor di depan pagar",
-  "sumberAduan": "Pelanggan", // Pelanggan | Non Pelanggan
-  "saluranKeluhan": "WhatsApp" // WhatsApp | Telepon | Datang Ketempat
+  "sumberAduan": "Pelanggan", // Pelanggan | Non_Pelangan
+  "saluranKeluhan": "Datang_Langsung" // Datang_Langsung | Via_Telepon | Temuan_Lapangan
 }</code></pre>
       </div>
     </div>

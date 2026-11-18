@@ -303,6 +303,7 @@ export const createPelanggan = async (req, res, next) => {
 			});
 			const pengaduanBaru = await tx.TABEL_PENGADUAN.create({
 				data: {
+					ID_PENGADUAN: randomUUID(),
 					ID_PELANGGAN: pelangganBaru.ID_PELANGGAN,
 					ID_USER_PENERIMA: idUserCS,
 					KELUHAN: keluhan,

@@ -43,7 +43,7 @@ model TABEL_PELANGGAN {
 }
 
 model TABEL_PENGADUAN {
-  ID_PENGADUAN       String                          @id @db.VarChar(36)
+  ID_PENGADUAN       String                          @id @default(uuid()) @db.VarChar(36)
   ID_PELANGGAN       String                          @db.VarChar(36)
   ID_USER_PENERIMA   String                          @db.VarChar(36)
   ID_USER_PENANGANAN String?                         @db.VarChar(36)
