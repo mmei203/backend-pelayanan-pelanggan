@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 
 import userRoutes from "./src/routes/user.routes.js";
 import pelangganRoutes from "./src/routes/pelanggan.routes.js";
+import authRoutes from "./src/routes/auth.routes.js";
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use("/uploads", express.static(uploadsStaticDir));
 app.use("/docs", express.static(path.join(__dirname, "docs")));
 
 // API Routes
+app.use("/api", authRoutes);
 app.use("/api", userRoutes);
 app.use("/api", pelangganRoutes);
 

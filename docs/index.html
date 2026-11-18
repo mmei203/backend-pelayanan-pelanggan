@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dokumentasi API - Webapp Pelayanan Keluhan PDAM</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --sidebar: #1e293b;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --get: #10b981;
+      --post: #3b82f6;
+      --put: #f59e0b;
+      --delete: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      min-height: 100vh;
+    }
+    aside {
+      width: 280px;
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+      padding: 24px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    aside h2 {
+      font-size: 1.1rem;
+      color: var(--primary);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    aside nav a {
+      display: block;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-bottom: 4px;
+      transition: all 0.2s;
+    }
+    aside nav a:hover {
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--primary);
+    }
+    main {
+      flex: 1;
+      padding: 40px;
+      max-width: 1000px;
+      overflow-y: auto;
+    }
+    header {
+      margin-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 20px;
+    }
+    header h1 {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+    header p {
+      color: var(--text-muted);
+    }
+    .badge-base {
+      display: inline-block;
+      background: #334155;
+      color: #38bdf8;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      margin-top: 10px;
+    }
+    .section-title {
+      font-size: 1.4rem;
+      margin: 40px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border);
+      color: var(--primary);
+    }
+    .endpoint-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .endpoint-header {
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(0,0,0,0.15);
+      border-bottom: 1px solid var(--border);
+    }
+    .method {
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 0.8rem;
+      font-family: monospace;
+      letter-spacing: 0.5px;
+    }
+    .method.GET { background: rgba(16, 185, 129, 0.2); color: var(--get); border: 1px solid var(--get); }
+    .method.POST { background: rgba(59, 130, 246, 0.2); color: var(--post); border: 1px solid var(--post); }
+    .method.PUT { background: rgba(245, 158, 11, 0.2); color: var(--put); border: 1px solid var(--put); }
+    .method.DELETE { background: rgba(239, 68, 68, 0.2); color: var(--delete); border: 1px solid var(--delete); }
+    .path {
+      font-family: monospace;
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--text);
+    }
+    .auth-badge {
+      margin-left: auto;
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 12px;
+      background: #475569;
+      color: #e2e8f0;
+    }
+    .endpoint-body {
+      padding: 18px;
+    }
+    .endpoint-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 14px;
+    }
+    .tab-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin: 12px 0 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    pre {
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+    }
+    code {
+      font-family: Consolas, Monaco, "Andale Mono", monospace !important;
+    }
+  </style>
+</head>
+<body>
+
+  <aside>
+    <h2>⚡ API Pelayanan</h2>
+    <nav>
+      <a href="#auth">🔐 Autentikasi User</a>
+      <a href="#users">👥 Manajemen User</a>
+      <a href="#pelanggan">📋 Data Pengaduan Pelanggan</a>
+      <a href="#export">📄 Cetak & Laporan</a>
+    </nav>
+  </aside>
+
+  <main>
+    <header>
+      <h1>Dokumentasi API Backend Pelayanan Keluhan</h1>
+      <p>Panduan integrasi frontend untuk otentikasi, master user, dan penanganan aduan pelanggan.</p>
+      <div class="badge-base">Base URL: /api</div>
+    </header>
+
+    <!-- SECTION: AUTH -->
+    <h2 class="section-title" id="auth">🔐 1. Autentikasi & Akun User</h2>
+
+    <!-- LOGIN -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method POST">POST</span>
+        <span class="path">/api/auth/login</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Login dengan username atau email beserta password. Menghasilkan JWT token.</div>
+        <div class="tab-title">Request Body (JSON):</div>
+        <pre><code class="language-json">{
+  "identifier": "admin_cs", // Bisa berupa username atau email
+  "password": "password123"
+}</code></pre>
+        <div class="tab-title">Response (200 OK):</div>
+        <pre><code class="language-json">{
+  "success": true,
+  "message": "Login berhasil",
+  "data": {
+    "user": {
+      "idUser": "3c90a1b2-4d5e-6f7a-8b9c-0d1e2f3a4b5c",
+      "namaUser": "Admin Customer Service",
+      "email": "cs@pald.co.id",
+      "username": "admin_cs",
+      "role": "CS"
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}</code></pre>
+      </div>
+    </div>
+
+    <!-- GET CURRENT USER -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method GET">GET</span>
+        <span class="path">/api/auth/me</span>
+        <span class="auth-badge">Bearer Token Required</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Mendapatkan informasi profil user yang sedang login saat ini.</div>
+        <div class="tab-title">Headers:</div>
+        <pre><code class="language-http">Authorization: Bearer <TOKEN_JWT></code></pre>
+        <div class="tab-title">Response (200 OK):</div>
+        <pre><code class="language-json">{
+  "success": true,
+  "data": {
+    "idUser": "3c90a1b2-4d5e-6f7a-8b9c-0d1e2f3a4b5c",
+    "namaUser": "Admin Customer Service",
+    "email": "cs@pald.co.id",
+    "username": "admin_cs",
+    "role": "CS",
+    "createdAt": "2026-11-10T00:00:00.000Z"
+  }
+}</code></pre>
+      </div>
+    </div>
+
+    <!-- UPDATE PROFILE -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method PUT">PUT</span>
+        <span class="path">/api/auth/profile</span>
+        <span class="auth-badge">Bearer Token Required</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Mengubah nama, username, email, atau password akun user yang sedang login.</div>
+        <div class="tab-title">Request Body (JSON):</div>
+        <pre><code class="language-json">{
+  "namaUser": "Nama Baru",
+  "username": "username_baru",
+  "email": "email_baru@pald.co.id",
+  "oldPassword": "password123", // Wajib jika ingin ganti password
+  "newPassword": "newPassword456"
+}</code></pre>
+        <div class="tab-title">Response (200 OK):</div>
+        <pre><code class="language-json">{
+  "success": true,
+  "message": "Profil akun berhasil diperbarui",
+  "data": {
+    "user": {
+      "idUser": "3c90a1b2-4d5e-6f7a-8b9c-0d1e2f3a4b5c",
+      "namaUser": "Nama Baru",
+      "email": "email_baru@pald.co.id",
+      "username": "username_baru",
+      "role": "CS"
+    },
+    "token": "eyJhbGciOi..." // Token baru dengan payload terupdate
+  }
+}</code></pre>
+      </div>
+    </div>
+
+    <!-- LOGOUT -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method POST">POST</span>
+        <span class="path">/api/auth/logout</span>
+        <span class="auth-badge">Bearer Token Required</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Endpoint logout (frontend silakan hapus token dari localStorage/Cookie).</div>
+        <div class="tab-title">Response (200 OK):</div>
+        <pre><code class="language-json">{
+  "success": true,
+  "message": "Logout berhasil. Silakan hapus token di sisi klien/frontend."
+}</code></pre>
+      </div>
+    </div>
+
+    <!-- SECTION: USERS -->
+    <h2 class="section-title" id="users">👥 2. Manajemen Master User</h2>
+
+    <!-- GET ALL USERS -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method GET">GET</span>
+        <span class="path">/api/users</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Mengambil daftar seluruh user pegawai (Super Admin, CS, Operator, Pengawas).</div>
+        <div class="tab-title">Response (200 OK):</div>
+        <pre><code class="language-json">{
+  "success": true,
+  "data": [
+    {
+      "idUser": "uuid",
+      "namaUser": "Operator 1",
+      "email": "op1@pald.co.id",
+      "username": "operator1",
+      "role": "Operator",
+      "createdAt": "2026-11-10T00:00:00.000Z"
+    }
+  ]
+}</code></pre>
+      </div>
+    </div>
+
+    <!-- CREATE USER -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method POST">POST</span>
+        <span class="path">/api/users</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Membuat user baru (Role opsi: Super Admin, CS, Operator, Pengawas). Password otomatis di-hash.</div>
+        <div class="tab-title">Request Body (JSON):</div>
+        <pre><code class="language-json">{
+  "namaUser": "Budi Pengawas",
+  "email": "budi@pald.co.id",
+  "username": "budi_pengawas",
+  "password": "password123",
+  "role": "Pengawas"
+}</code></pre>
+      </div>
+    </div>
+
+    <!-- SECTION: PELANGGAN -->
+    <h2 class="section-title" id="pelanggan">📋 3. Data Pengaduan Pelanggan</h2>
+
+    <!-- GET ALL PELANGGAN -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method GET">GET</span>
+        <span class="path">/api/pelanggan</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Mengambil semua data pengaduan beserta data pelanggan, penerima, dan penanganinya.</div>
+        <div class="tab-title">Query Parameters (Optional):</div>
+        <pre><code class="language-http">?search=budi&sumberAduan=Pelanggan&saluranKeluhan=WhatsApp</code></pre>
+      </div>
+    </div>
+
+    <!-- CREATE PELANGGAN -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method POST">POST</span>
+        <span class="path">/api/pelanggan</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Membuat aduan baru pelanggan (dibuat oleh CS).</div>
+        <div class="tab-title">Request Body (JSON):</div>
+        <pre><code class="language-json">{
+  "idUserCS": "3c90a1b2-4d5e-6f7a-8b9c-0d1e2f3a4b5c",
+  "namaPelanggan": "Ahmad Dani",
+  "noHp": "081234567890",
+  "noKontakPdam": "12345678", // Kosongkan jika Non Pelanggan
+  "alamat": "Jl. Kertak Hanyar No. 12",
+  "keluhan": "Pipa bocor di depan pagar",
+  "sumberAduan": "Pelanggan", // Pelanggan | Non Pelanggan
+  "saluranKeluhan": "WhatsApp" // WhatsApp | Telepon | Datang Ketempat
+}</code></pre>
+      </div>
+    </div>
+
+    <!-- UPDATE PENGADUAN -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method PUT">PUT</span>
+        <span class="path">/api/pelanggan/:id</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Update status pengaduan (ON PROGRESS atau SELESAI). Mendukung Multipart Form-Data untuk upload gambar bukti.</div>
+        <div class="tab-title">Form Data Fields (Multipart):</div>
+        <pre><code class="language-http">status: "ON PROGRESS" | "SELESAI"
+operatorId: "uuid-operator"
+keluhan: "Teks keluhan terupdate"
+latitude: "-3.316694"
+longitude: "114.590111"
+dokumenLaporan: (File binary / pdf / gambar)
+fotoKeluhan: (File binary / gambar bukti)</code></pre>
+      </div>
+    </div>
+
+    <!-- SECTION: EXPORT -->
+    <h2 class="section-title" id="export">📄 4. Cetak PDF & Riwayat</h2>
+
+    <!-- PRINT PDF -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method GET">GET</span>
+        <span class="path">/api/pelanggan/:id/print</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Mengunduh/membuka file Formulir Aduan Pelanggan dalam bentuk PDF resmi (header logo PALD).</div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>hljs.highlightAll();</script>
+</body>
+</html>

@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { prisma } from "../config/db.js";
 
 export const getAllUsers = async (req, res, next) => {
@@ -24,8 +25,14 @@ export const createUser = async (req, res, next) => {
 	try {
 		const { namaUser, email, username, password, role } = req.body;
 
+		// Hash password sebelum disimpan jika belum di-hash
+		let hashedPassword = password;
+		if (password && !password.startsWith("$2a$") && !password.startsWith("$2b$")) {
+			hashedPassword = await bcrypt.hash(password, 10);
+		}
+
 		const newUser = await prisma.tabelUser.create({
-			data: { namaUser, email, username, password, role },
+			data: { namaUser, email, username, password: hashedPassword, role },
 			select: {
 				idUser: true,
 				namaUser: true,
