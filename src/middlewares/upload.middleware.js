@@ -1,20 +1,19 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import os from "os";
+import { put } from "@vercel/blob";
+import { uploadsDir } from "../config/uploads.js";
 
-// Di Vercel serverless gunakan folder tmp, di lokal gunakan uploads/
-const uploadDir = process.env.VERCEL ? path.join(os.tmpdir(), "uploads") : "uploads/";
-if (!fs.existsSync(uploadDir)) {
-	fs.mkdirSync(uploadDir, { recursive: true });
+if (!process.env.VERCEL && !fs.existsSync(uploadsDir)) {
+	fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
 const storage = multer.diskStorage({
 	destination: (req, file, cb) => {
-		if (!fs.existsSync(uploadDir)) {
-			fs.mkdirSync(uploadDir, { recursive: true });
+		if (!fs.existsSync(uploadsDir)) {
+			fs.mkdirSync(uploadsDir, { recursive: true });
 		}
-		cb(null, uploadDir);
+		cb(null, uploadsDir);
 	},
 	filename: (req, file, cb) => {
 		const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -24,6 +23,24 @@ const storage = multer.diskStorage({
 });
 
 export const uploadMiddleware = multer({
-	storage,
+	storage: process.env.VERCEL ? multer.memoryStorage() : storage,
 	limits: { fileSize: 10 * 1024 * 1024 }, // Batas maksimal file 10MB
 });
+
+export const persistUploadedFiles = async (req, res, next) => {
+	if (!process.env.VERCEL) return next();
+
+	const files = Object.values(req.files ?? {}).flat();
+	await Promise.all(
+		files.map(async (file) => {
+			const blob = await put(file.filename, file.buffer, {
+				access: "public",
+				contentType: file.mimetype,
+			});
+			file.path = blob.url;
+			delete file.buffer;
+		}),
+	);
+
+	next();
+};

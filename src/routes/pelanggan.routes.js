@@ -10,7 +10,10 @@ import {
 	viewDokumenLaporan,
 	viewFotoKeluhan,
 } from "../controllers/pelanggan.controllers.js";
-import { uploadMiddleware } from "../middlewares/upload.middleware.js";
+import {
+	persistUploadedFiles,
+	uploadMiddleware,
+} from "../middlewares/upload.middleware.js";
 
 const router = Router();
 
@@ -27,6 +30,7 @@ router.post(
 		{ name: "dokumenLaporan", maxCount: 1 },
 		{ name: "fotoKeluhan", maxCount: 1 },
 	]),
+	persistUploadedFiles,
 	createPelanggan,
 );
 
@@ -36,6 +40,7 @@ router.put(
 		{ name: "dokumenLaporan", maxCount: 1 },
 		{ name: "fotoKeluhan", maxCount: 1 },
 	]),
+	persistUploadedFiles,
 	updatePelanggan,
 );
 
