@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { randomUUID } from "crypto";
 import { prisma } from "../config/db.js";
 
 const mapUser = (u) => {
@@ -45,6 +46,7 @@ export const createUser = async (req, res, next) => {
 
 		const newUser = await prisma.TABEL_USER.create({
 			data: {
+				ID_USER: randomUUID(),
 				NAMA_USER: namaUser,
 				EMAIL: email,
 				USERNAME: username,

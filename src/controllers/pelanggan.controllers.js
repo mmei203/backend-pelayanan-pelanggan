@@ -330,10 +330,21 @@ export const createPelanggan = async (req, res, next) => {
 			message: "Pengaduan berhasil ditambahkan",
 			data: {
 				...result,
+				dokumenLaporan: formatFileUrl(
+					req,
+					dokumenLaporanPath || result.pengaduanBaru.dokumenLaporan,
+				),
+				fotoKeluhan: formatFileUrl(req, fotoKeluhanPath || result.pengaduanBaru.fotoKeluhan),
 				pengaduanBaru: {
 					...result.pengaduanBaru,
-					dokumenLaporan: formatFileUrl(req, result.pengaduanBaru.dokumenLaporan),
-					fotoKeluhan: formatFileUrl(req, result.pengaduanBaru.fotoKeluhan),
+					dokumenLaporan: formatFileUrl(
+						req,
+						dokumenLaporanPath || result.pengaduanBaru.dokumenLaporan,
+					),
+					fotoKeluhan: formatFileUrl(
+						req,
+						fotoKeluhanPath || result.pengaduanBaru.fotoKeluhan,
+					),
 				},
 			},
 		});
@@ -411,8 +422,8 @@ export const updatePelanggan = async (req, res, next) => {
 				message: "Data berhasil diperbarui menjadi ON PROGRESS",
 				data: {
 					...enriched,
-					dokumenLaporan: formatFileUrl(req, enriched.dokumenLaporan),
-					fotoKeluhan: formatFileUrl(req, enriched.fotoKeluhan),
+					dokumenLaporan: formatFileUrl(req, dokumenLaporanPath || enriched.dokumenLaporan),
+					fotoKeluhan: formatFileUrl(req, fotoKeluhanPath || enriched.fotoKeluhan),
 				},
 			});
 		}
@@ -439,8 +450,8 @@ export const updatePelanggan = async (req, res, next) => {
 				message: "Data pengaduan berhasil diselesaikan dan diperbarui",
 				data: {
 					...enriched,
-					dokumenLaporan: formatFileUrl(req, enriched.dokumenLaporan),
-					fotoKeluhan: formatFileUrl(req, enriched.fotoKeluhan),
+					dokumenLaporan: formatFileUrl(req, dokumenLaporanPath || enriched.dokumenLaporan),
+					fotoKeluhan: formatFileUrl(req, fotoKeluhanPath || enriched.fotoKeluhan),
 				},
 			});
 		}
@@ -463,8 +474,8 @@ export const updatePelanggan = async (req, res, next) => {
 			message: "Data pelanggan dan pengaduan berhasil diperbarui",
 			data: {
 				...enriched,
-				dokumenLaporan: formatFileUrl(req, enriched.dokumenLaporan),
-				fotoKeluhan: formatFileUrl(req, enriched.fotoKeluhan),
+				dokumenLaporan: formatFileUrl(req, dokumenLaporanPath || enriched.dokumenLaporan),
+				fotoKeluhan: formatFileUrl(req, fotoKeluhanPath || enriched.fotoKeluhan),
 			},
 		});
 	} catch (error) {
