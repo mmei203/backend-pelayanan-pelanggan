@@ -8,6 +8,12 @@ if (!process.env.VERCEL && !fs.existsSync(uploadsDir)) {
 	fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+const createFilename = (fieldname, originalname) => {
+	const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+	const ext = path.extname(originalname);
+	return `${fieldname}-${uniqueSuffix}${ext}`;
+};
+
 const storage = multer.diskStorage({
 	destination: (req, file, cb) => {
 		if (!fs.existsSync(uploadsDir)) {
@@ -16,9 +22,7 @@ const storage = multer.diskStorage({
 		cb(null, uploadsDir);
 	},
 	filename: (req, file, cb) => {
-		const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-		const ext = path.extname(file.originalname);
-		cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+		cb(null, createFilename(file.fieldname, file.originalname));
 	},
 });
 
@@ -33,7 +37,7 @@ export const persistUploadedFiles = async (req, res, next) => {
 	const files = Object.values(req.files ?? {}).flat();
 	await Promise.all(
 		files.map(async (file) => {
-			const blob = await put(file.filename, file.buffer, {
+			const blob = await put(createFilename(file.fieldname, file.originalname), file.buffer, {
 				access: "public",
 				contentType: file.mimetype,
 			});
