@@ -275,8 +275,13 @@ export const createPelanggan = async (req, res, next) => {
 			sumberAduan,
 			saluranKeluhan,
 		} = req.body;
-		const dokumenLaporanPath = req.files?.dokumenLaporan?.[0]?.path;
-		const fotoKeluhanPath = req.files?.fotoKeluhan?.[0]?.path;
+		const dokumenLaporanFile = req.files?.dokumenLaporan?.[0];
+		const fotoKeluhanFile = req.files?.fotoKeluhan?.[0];
+		const pengaduanId = randomUUID();
+		const dokumenLaporanPath = dokumenLaporanFile
+			? `/api/pelanggan/${pengaduanId}/dokumen`
+			: undefined;
+		const fotoKeluhanPath = fotoKeluhanFile ? `/api/pelanggan/${pengaduanId}/foto` : undefined;
 
 		if (!idUserCS) {
 			return res.status(400).json({ success: false, message: "idUserCS wajib diisi" });
@@ -305,7 +310,7 @@ export const createPelanggan = async (req, res, next) => {
 			});
 			const pengaduanBaru = await tx.TABEL_PENGADUAN.create({
 				data: {
-					ID_PENGADUAN: randomUUID(),
+					ID_PENGADUAN: pengaduanId,
 					ID_PELANGGAN: pelangganBaru.ID_PELANGGAN,
 					ID_USER_PENERIMA: idUserCS,
 					KELUHAN: keluhan,
@@ -318,6 +323,24 @@ export const createPelanggan = async (req, res, next) => {
 					SALURAN_KELUHAN: resolvedSaluranKeluhan,
 				},
 			});
+
+			if (dokumenLaporanFile || fotoKeluhanFile) {
+				await tx.TABEL_PENGADUAN_FILE.create({
+					data: {
+						ID_PENGADUAN: pengaduanId,
+						...(dokumenLaporanFile && {
+							DOKUMEN_LAPORAN_DATA: dokumenLaporanFile.buffer,
+							DOKUMEN_LAPORAN_MIME: dokumenLaporanFile.mimetype,
+							DOKUMEN_LAPORAN_NAMA: dokumenLaporanFile.originalname,
+						}),
+						...(fotoKeluhanFile && {
+							FOTO_KELUHAN_DATA: fotoKeluhanFile.buffer,
+							FOTO_KELUHAN_MIME: fotoKeluhanFile.mimetype,
+							FOTO_KELUHAN_NAMA: fotoKeluhanFile.originalname,
+						}),
+					},
+				});
+			}
 
 			return {
 				pelangganBaru: mapPelangganFromDb(pelangganBaru),
@@ -378,9 +401,43 @@ export const updatePelanggan = async (req, res, next) => {
 			return res.status(404).json({ success: false, message: "Data pengaduan tidak ditemukan" });
 		}
 
-		const dokumenLaporanPath =
-			req.files?.dokumenLaporan?.[0]?.path || pengaduanExist.DOKUMEN_LAPORAN;
-		const fotoKeluhanPath = req.files?.fotoKeluhan?.[0]?.path || pengaduanExist.FOTO_KELUHAN;
+		const dokumenLaporanFile = req.files?.dokumenLaporan?.[0];
+		const fotoKeluhanFile = req.files?.fotoKeluhan?.[0];
+		const dokumenLaporanPath = dokumenLaporanFile
+			? `/api/pelanggan/${id}/dokumen`
+			: pengaduanExist.DOKUMEN_LAPORAN;
+		const fotoKeluhanPath = fotoKeluhanFile
+			? `/api/pelanggan/${id}/foto`
+			: pengaduanExist.FOTO_KELUHAN;
+		const fileUpdateData = {
+			...(dokumenLaporanFile && {
+				DOKUMEN_LAPORAN_DATA: dokumenLaporanFile.buffer,
+				DOKUMEN_LAPORAN_MIME: dokumenLaporanFile.mimetype,
+				DOKUMEN_LAPORAN_NAMA: dokumenLaporanFile.originalname,
+			}),
+			...(fotoKeluhanFile && {
+				FOTO_KELUHAN_DATA: fotoKeluhanFile.buffer,
+				FOTO_KELUHAN_MIME: fotoKeluhanFile.mimetype,
+				FOTO_KELUHAN_NAMA: fotoKeluhanFile.originalname,
+			}),
+		};
+		const updatePengaduan = async (data) =>
+			prisma.$transaction(async (tx) => {
+				const updated = await tx.TABEL_PENGADUAN.update({
+					where: { ID_PENGADUAN: id },
+					data,
+				});
+
+				if (dokumenLaporanFile || fotoKeluhanFile) {
+					await tx.TABEL_PENGADUAN_FILE.upsert({
+						where: { ID_PENGADUAN: id },
+						create: { ID_PENGADUAN: id, ...fileUpdateData },
+						update: fileUpdateData,
+					});
+				}
+
+				return updated;
+			});
 
 		// 1. Update Data Pelanggan jika ada
 		if (namaPelanggan || noHp || noKontakPdam !== undefined || alamat) {
@@ -403,17 +460,14 @@ export const updatePelanggan = async (req, res, next) => {
 
 		// 2. Update berdasarkan status
 		if (rawStatus === "ON PROGRESS") {
-			const updated = await prisma.TABEL_PENGADUAN.update({
-				where: { ID_PENGADUAN: id },
-				data: {
-					STATUS: "ON PROGRESS",
-					...(operatorId && { ID_USER_PENANGANAN: operatorId }),
-					...(keluhan && { KELUHAN: keluhan }),
-					...(dokumenLaporanPath && { DOKUMEN_LAPORAN: dokumenLaporanPath }),
-					...(fotoKeluhanPath && { FOTO_KELUHAN: fotoKeluhanPath }),
-					TANGGAL_DIPROSES: new Date(),
-					...extraPengaduanFields,
-				},
+			const updated = await updatePengaduan({
+				STATUS: "ON PROGRESS",
+				...(operatorId && { ID_USER_PENANGANAN: operatorId }),
+				...(keluhan && { KELUHAN: keluhan }),
+				...(dokumenLaporanPath && { DOKUMEN_LAPORAN: dokumenLaporanPath }),
+				...(fotoKeluhanPath && { FOTO_KELUHAN: fotoKeluhanPath }),
+				TANGGAL_DIPROSES: new Date(),
+				...extraPengaduanFields,
 			});
 
 			const enriched = await enrichPengaduan(updated);
@@ -429,19 +483,16 @@ export const updatePelanggan = async (req, res, next) => {
 		}
 
 		if (rawStatus === "SELESAI") {
-			const updated = await prisma.TABEL_PENGADUAN.update({
-				where: { ID_PENGADUAN: id },
-				data: {
-					STATUS: "SELESAI",
-					...(latitude && { LATITUDE: latitude }),
-					...(longitude && { LONGITUDE: longitude }),
-					...(dokumenLaporanPath && { DOKUMEN_LAPORAN: dokumenLaporanPath }),
-					...(fotoKeluhanPath && { FOTO_KELUHAN: fotoKeluhanPath }),
-					...(keluhan && { KELUHAN: keluhan }),
-					...(operatorId && { ID_USER_PENANGANAN: operatorId }),
-					TANGGAL_SELESAI: new Date(),
-					...extraPengaduanFields,
-				},
+			const updated = await updatePengaduan({
+				STATUS: "SELESAI",
+				...(latitude && { LATITUDE: latitude }),
+				...(longitude && { LONGITUDE: longitude }),
+				...(dokumenLaporanPath && { DOKUMEN_LAPORAN: dokumenLaporanPath }),
+				...(fotoKeluhanPath && { FOTO_KELUHAN: fotoKeluhanPath }),
+				...(keluhan && { KELUHAN: keluhan }),
+				...(operatorId && { ID_USER_PENANGANAN: operatorId }),
+				TANGGAL_SELESAI: new Date(),
+				...extraPengaduanFields,
 			});
 
 			const enriched = await enrichPengaduan(updated);
@@ -463,10 +514,7 @@ export const updatePelanggan = async (req, res, next) => {
 		if (dokumenLaporanPath) updateDataPayload.DOKUMEN_LAPORAN = dokumenLaporanPath;
 		if (fotoKeluhanPath) updateDataPayload.FOTO_KELUHAN = fotoKeluhanPath;
 
-		const updated = await prisma.TABEL_PENGADUAN.update({
-			where: { ID_PENGADUAN: id },
-			data: updateDataPayload,
-		});
+		const updated = await updatePengaduan(updateDataPayload);
 
 		const enriched = await enrichPengaduan(updated);
 		return res.status(200).json({
@@ -551,7 +599,7 @@ export const printPengaduan = async (req, res, next) => {
 
 // ─── FILE SERVING ─────────────────────────────────────────────────────────────
 
-const serveUploadedFile = (res, filePath, fallbackName = "file") => {
+const serveUploadedFile = (res, filePath) => {
 	if (!filePath) {
 		return res.status(404).json({ success: false, message: "File dokumentasi tidak tersedia" });
 	}
@@ -573,20 +621,50 @@ const serveUploadedFile = (res, filePath, fallbackName = "file") => {
 	return res.sendFile(resolvedPath);
 };
 
+const serveDatabaseFile = (res, data, mimeType, fileName) => {
+	if (data == null) return null;
+
+	res.setHeader("Content-Type", mimeType || "application/octet-stream");
+	res.setHeader(
+		"Content-Disposition",
+		`inline; filename*=UTF-8''${encodeURIComponent(path.basename(fileName || "file"))}`,
+	);
+	res.setHeader("X-Content-Type-Options", "nosniff");
+	return res.send(Buffer.from(data));
+};
+
 export const viewDokumenLaporan = async (req, res, next) => {
 	try {
 		const { id } = req.params;
 
-		const pengaduan = await prisma.TABEL_PENGADUAN.findUnique({
-			where: { ID_PENGADUAN: id },
-			select: { DOKUMEN_LAPORAN: true },
-		});
+		const [pengaduan, uploadedFile] = await Promise.all([
+			prisma.TABEL_PENGADUAN.findUnique({
+				where: { ID_PENGADUAN: id },
+				select: { DOKUMEN_LAPORAN: true },
+			}),
+			prisma.TABEL_PENGADUAN_FILE.findUnique({
+				where: { ID_PENGADUAN: id },
+				select: {
+					DOKUMEN_LAPORAN_DATA: true,
+					DOKUMEN_LAPORAN_MIME: true,
+					DOKUMEN_LAPORAN_NAMA: true,
+				},
+			}),
+		]);
 
 		if (!pengaduan) {
 			return res.status(404).json({ success: false, message: "Data pengaduan tidak ditemukan" });
 		}
 
-		return serveUploadedFile(res, pengaduan.DOKUMEN_LAPORAN, "dokumen-laporan");
+		const databaseFile = serveDatabaseFile(
+			res,
+			uploadedFile?.DOKUMEN_LAPORAN_DATA,
+			uploadedFile?.DOKUMEN_LAPORAN_MIME,
+			uploadedFile?.DOKUMEN_LAPORAN_NAMA,
+		);
+		if (databaseFile) return databaseFile;
+
+		return serveUploadedFile(res, pengaduan.DOKUMEN_LAPORAN);
 	} catch (error) {
 		next(error);
 	}
@@ -596,16 +674,34 @@ export const viewFotoKeluhan = async (req, res, next) => {
 	try {
 		const { id } = req.params;
 
-		const pengaduan = await prisma.TABEL_PENGADUAN.findUnique({
-			where: { ID_PENGADUAN: id },
-			select: { FOTO_KELUHAN: true },
-		});
+		const [pengaduan, uploadedFile] = await Promise.all([
+			prisma.TABEL_PENGADUAN.findUnique({
+				where: { ID_PENGADUAN: id },
+				select: { FOTO_KELUHAN: true },
+			}),
+			prisma.TABEL_PENGADUAN_FILE.findUnique({
+				where: { ID_PENGADUAN: id },
+				select: {
+					FOTO_KELUHAN_DATA: true,
+					FOTO_KELUHAN_MIME: true,
+					FOTO_KELUHAN_NAMA: true,
+				},
+			}),
+		]);
 
 		if (!pengaduan) {
 			return res.status(404).json({ success: false, message: "Data pengaduan tidak ditemukan" });
 		}
 
-		return serveUploadedFile(res, pengaduan.FOTO_KELUHAN, "foto-keluhan");
+		const databaseFile = serveDatabaseFile(
+			res,
+			uploadedFile?.FOTO_KELUHAN_DATA,
+			uploadedFile?.FOTO_KELUHAN_MIME,
+			uploadedFile?.FOTO_KELUHAN_NAMA,
+		);
+		if (databaseFile) return databaseFile;
+
+		return serveUploadedFile(res, pengaduan.FOTO_KELUHAN);
 	} catch (error) {
 		next(error);
 	}
