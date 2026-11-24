@@ -60,6 +60,21 @@ model TABEL_PENGADUAN {
   UPDATED_AT         DateTime?                       @db.Timestamp(0)
   SALURAN_KELUHAN    TABEL_PENGADUAN_SALURAN_KELUHAN
   SUMBER_ADUAN       TABEL_PENGADUAN_SUMBER_ADUAN
+  FILES              TABEL_PENGADUAN_FILE_ITEM[]
+}
+
+model TABEL_PENGADUAN_FILE_ITEM {
+  ID_FILE      String   @id @default(uuid()) @db.VarChar(36)
+  ID_PENGADUAN String   @db.VarChar(36)
+  JENIS_FILE   String   @db.VarChar(20)
+  NAMA_FILE    String   @db.VarChar(255)
+  MIME_TYPE    String   @db.VarChar(100)
+  FILE_DATA    Bytes    @db.MediumBlob
+  CREATED_AT   DateTime @default(now()) @db.Timestamp(0)
+  PENGADUAN    TABEL_PENGADUAN @relation(fields: [ID_PENGADUAN], references: [ID_PENGADUAN], onDelete: Cascade)
+
+  @@index([ID_PENGADUAN, JENIS_FILE])
+  @@map("TABEL_PENGADUAN_FILE_ITEM")
 }
 
 model TABEL_PENGADUAN_FILE {

@@ -416,7 +416,7 @@
         <span class="path">/api/pelanggan</span>
       </div>
       <div class="endpoint-body">
-        <div class="endpoint-desc">Mengambil semua data pengaduan beserta data pelanggan, penerima, dan penanganinya.</div>
+        <div class="endpoint-desc">Mengambil semua data pengaduan beserta data pelanggan, penerima, penanganinya, dan daftar file pada <code>dokumenLaporanFiles</code>/<code>fotoKeluhanFiles</code>.</div>
         <div class="tab-title">Query Parameters (Optional):</div>
         <pre><code class="language-http">?search=budi&sumberAduan=Pelanggan&saluranKeluhan=WhatsApp</code></pre>
       </div>
@@ -439,10 +439,10 @@ alamat: "Jl. Kertak Hanyar No. 12"
 keluhan: "Pipa bocor di depan pagar"
 sumberAduan: "Pelanggan" (opsional)
 saluranKeluhan: "Datang_Langsung" (opsional)
-dokumenLaporan: (File binary, opsional)
-fotoKeluhan: (File binary, opsional)</code></pre>
+dokumenLaporan: (File, opsional; ulangi field hingga 5 file)
+fotoKeluhan: (File, opsional; ulangi field hingga 5 file)</code></pre>
         <div class="tab-title">Response:</div>
-        <div class="endpoint-desc">Properti <code>data.dokumenLaporan</code> dan <code>data.fotoKeluhan</code> berisi URL file (juga tersedia pada <code>data.pengaduanBaru</code>), atau <code>null</code> jika file tidak diunggah.</div>
+        <div class="endpoint-desc"><code>data.dokumenLaporanFiles</code> dan <code>data.fotoKeluhanFiles</code> berisi array metadata file (<code>id</code>, <code>type</code>, <code>name</code>, <code>mimeType</code>, dan <code>url</code>). Untuk kompatibilitas, <code>data.dokumenLaporan</code> dan <code>data.fotoKeluhan</code> tetap berisi URL file pertama atau <code>null</code>. Properti tersebut juga tersedia di <code>data.pengaduanBaru</code>.</div>
       </div>
     </div>
 
@@ -467,7 +467,7 @@ fotoKeluhan: (File binary, opsional)</code></pre>
         <span class="path">/api/pelanggan/:id</span>
       </div>
       <div class="endpoint-body">
-        <div class="endpoint-desc">Memperbarui pengaduan. Mendukung Multipart Form-Data untuk upload dokumen laporan dan foto keluhan pada setiap status.</div>
+        <div class="endpoint-desc">Memperbarui pengaduan. Mendukung Multipart Form-Data dengan maksimal 5 dokumen dan 5 foto. File baru ditambahkan ke pengaduan tanpa menghapus file yang sudah ada.</div>
         <div class="tab-title">URL Parameter:</div>
         <pre><code class="language-http">:id -> ID Pengaduan (UUID dari TABEL_PENGADUAN, contoh: 58945740-6742-45d7-8d1c-f08053c61441)</code></pre>
         <div class="tab-title">Form Data Fields (Multipart):</div>
@@ -476,8 +476,9 @@ operatorId: "uuid-operator"
 keluhan: "Teks keluhan terupdate"
 latitude: "-3.316694"
 longitude: "114.590111"
-dokumenLaporan: (File binary / pdf / gambar)
-fotoKeluhan: (File binary / gambar bukti)</code></pre>
+dokumenLaporan: (File; ulangi field hingga 5 dokumen)
+fotoKeluhan: (File; ulangi field hingga 5 foto)</code></pre>
+        <div class="endpoint-desc">Untuk mengambil URL dan metadata semua file setelah update, panggil <code>GET /api/pelanggan/:id</code>; daftar tersedia pada <code>data.dokumenLaporanFiles</code> dan <code>data.fotoKeluhanFiles</code>.</div>
       </div>
     </div>
 
@@ -504,7 +505,7 @@ fotoKeluhan: (File binary / gambar bukti)</code></pre>
         <span class="path">/api/pelanggan/:id/dokumen</span>
       </div>
       <div class="endpoint-body">
-        <div class="endpoint-desc">Membuka atau mendownload file <strong>Dokumen Laporan</strong> yang diunggah oleh operator lapangan untuk pengaduan tertentu. Mengembalikan stream file langsung atau redirect ke storage URL.</div>
+        <div class="endpoint-desc">Membuka atau mendownload dokumen pertama untuk kompatibilitas. Untuk memilih dokumen tertentu, gunakan URL pada array file.</div>
         <div class="tab-title">URL Parameter:</div>
         <pre><code class="language-http">:id -> ID Pengaduan (UUID dari TABEL_PENGADUAN, contoh: 58945740-6742-45d7-8d1c-f08053c61441)</code></pre>
       </div>
@@ -517,9 +518,23 @@ fotoKeluhan: (File binary / gambar bukti)</code></pre>
         <span class="path">/api/pelanggan/:id/foto</span>
       </div>
       <div class="endpoint-body">
-        <div class="endpoint-desc">Membuka atau mendownload <strong>Foto Keluhan/Bukti Pekerjaan</strong> yang diunggah oleh operator lapangan untuk pengaduan tertentu.</div>
+        <div class="endpoint-desc">Membuka atau mendownload foto pertama untuk kompatibilitas. Untuk memilih file tertentu, gunakan URL yang ada pada array file.</div>
         <div class="tab-title">URL Parameter:</div>
         <pre><code class="language-http">:id -> ID Pengaduan (UUID dari TABEL_PENGADUAN, contoh: 58945740-6742-45d7-8d1c-f08053c61441)</code></pre>
+      </div>
+    </div>
+
+    <!-- VIEW ANY UPLOADED FILE -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method GET">GET</span>
+        <span class="path">/api/pelanggan/:id/files/:fileId</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Membuka atau mengunduh file dokumen/foto tertentu. Gunakan URL pada properti <code>url</code> dari <code>dokumenLaporanFiles</code> atau <code>fotoKeluhanFiles</code>.</div>
+        <div class="tab-title">URL Parameter:</div>
+        <pre><code class="language-http">:id -> ID Pengaduan
+:fileId -> ID file dari item pada array file</code></pre>
       </div>
     </div>
 

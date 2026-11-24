@@ -7,6 +7,7 @@ import {
 	updatePelanggan,
 	getHistory,
 	printPengaduan,
+	viewPengaduanFile,
 	viewDokumenLaporan,
 	viewFotoKeluhan,
 } from "../controllers/pelanggan.controllers.js";
@@ -18,14 +19,15 @@ router.get("/pelanggan", getAllPelanggan);
 router.get("/pelanggan/filter", getPelangganByStatus);
 router.get("/pelanggan/history", getHistory);
 router.get("/pelanggan/:id/print", printPengaduan);
+router.get("/pelanggan/:id/files/:fileId", viewPengaduanFile);
 router.get("/pelanggan/:id/dokumen", viewDokumenLaporan);
 router.get("/pelanggan/:id/foto", viewFotoKeluhan);
 router.get("/pelanggan/:id", getPelangganById);
 router.post(
 	"/pelanggan",
 	uploadMiddleware.fields([
-		{ name: "dokumenLaporan", maxCount: 1 },
-		{ name: "fotoKeluhan", maxCount: 1 },
+		{ name: "dokumenLaporan", maxCount: 5 },
+		{ name: "fotoKeluhan", maxCount: 5 },
 	]),
 	createPelanggan,
 );
@@ -33,8 +35,8 @@ router.post(
 router.put(
 	"/pelanggan/:id",
 	uploadMiddleware.fields([
-		{ name: "dokumenLaporan", maxCount: 1 },
-		{ name: "fotoKeluhan", maxCount: 1 },
+		{ name: "dokumenLaporan", maxCount: 5 },
+		{ name: "fotoKeluhan", maxCount: 5 },
 	]),
 	updatePelanggan,
 );

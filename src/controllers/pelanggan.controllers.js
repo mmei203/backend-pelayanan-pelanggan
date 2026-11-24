@@ -83,6 +83,110 @@ const mapPengaduanFromDb = (row) => {
 	};
 };
 
+const getFileMetadata = async (pengaduanIds) => {
+	if (!pengaduanIds.length) return new Map();
+
+	const [files, legacyFiles] = await Promise.all([
+		prisma.TABEL_PENGADUAN_FILE_ITEM.findMany({
+			where: { ID_PENGADUAN: { in: pengaduanIds } },
+			select: {
+				ID_FILE: true,
+				ID_PENGADUAN: true,
+				JENIS_FILE: true,
+				NAMA_FILE: true,
+				MIME_TYPE: true,
+				CREATED_AT: true,
+			},
+			orderBy: [{ CREATED_AT: "asc" }, { ID_FILE: "asc" }],
+		}),
+		prisma.TABEL_PENGADUAN_FILE.findMany({
+			where: { ID_PENGADUAN: { in: pengaduanIds } },
+			select: {
+				ID_PENGADUAN: true,
+				DOKUMEN_LAPORAN_MIME: true,
+				DOKUMEN_LAPORAN_NAMA: true,
+				FOTO_KELUHAN_MIME: true,
+				FOTO_KELUHAN_NAMA: true,
+			},
+		}),
+	]);
+
+	const filesByPengaduan = new Map(pengaduanIds.map((id) => [id, []]));
+	for (const file of files) {
+		filesByPengaduan.get(file.ID_PENGADUAN)?.push({
+			id: file.ID_FILE,
+			type: file.JENIS_FILE,
+			name: file.NAMA_FILE,
+			mimeType: file.MIME_TYPE,
+			createdAt: file.CREATED_AT,
+		});
+	}
+
+	for (const file of legacyFiles) {
+		const items = filesByPengaduan.get(file.ID_PENGADUAN);
+		if (file.DOKUMEN_LAPORAN_MIME || file.DOKUMEN_LAPORAN_NAMA) {
+			items?.push({
+				id: "legacy-dokumen",
+				type: "dokumenLaporan",
+				name: file.DOKUMEN_LAPORAN_NAMA,
+				mimeType: file.DOKUMEN_LAPORAN_MIME,
+				legacy: true,
+			});
+		}
+		if (file.FOTO_KELUHAN_MIME || file.FOTO_KELUHAN_NAMA) {
+			items?.push({
+				id: "legacy-foto",
+				type: "fotoKeluhan",
+				name: file.FOTO_KELUHAN_NAMA,
+				mimeType: file.FOTO_KELUHAN_MIME,
+				legacy: true,
+			});
+		}
+	}
+
+	return filesByPengaduan;
+};
+
+const formatPengaduanFiles = (req, pengaduan) => {
+	const fileUrl = (file) =>
+		file.legacy
+			? `${req.protocol}://${req.get("host")}/api/pelanggan/${pengaduan.idPengaduan}/${file.type === "dokumenLaporan" ? "dokumen" : "foto"}`
+			: `${req.protocol}://${req.get("host")}/api/pelanggan/${pengaduan.idPengaduan}/files/${file.id}`;
+	const formatList = (type, legacyPath) => {
+		const files = pengaduan.files
+			.filter((file) => file.type === type)
+			.map((file) => ({ ...file, url: fileUrl(file) }));
+		const legacyUrl = formatFileUrl(req, legacyPath);
+		if (
+			legacyUrl &&
+			!files.some((file) => file.url === legacyUrl) &&
+			!legacyUrl.endsWith(type === "dokumenLaporan" ? "/dokumen" : "/foto")
+		) {
+			files.push({
+				id: null,
+				type,
+				name: path.basename(legacyPath),
+				mimeType: null,
+				url: legacyUrl,
+			});
+		}
+		return files;
+	};
+
+	const dokumenLaporanFiles = formatList("dokumenLaporan", pengaduan.dokumenLaporan);
+	const fotoKeluhanFiles = formatList("fotoKeluhan", pengaduan.fotoKeluhan);
+	const publicPengaduan = { ...pengaduan };
+	delete publicPengaduan.files;
+
+	return {
+		...publicPengaduan,
+		dokumenLaporan: dokumenLaporanFiles[0]?.url || null,
+		fotoKeluhan: fotoKeluhanFiles[0]?.url || null,
+		dokumenLaporanFiles,
+		fotoKeluhanFiles,
+	};
+};
+
 // ─── INTERNAL HELPERS ────────────────────────────────────────────────────────
 
 /**
@@ -94,7 +198,7 @@ const enrichPengaduan = async (pengaduanDb) => {
 
 	const pengaduan = mapPengaduanFromDb(pengaduanDb);
 
-	const [pelanggan, penerima, penangani] = await Promise.all([
+	const [pelanggan, penerima, penangani, filesByPengaduan] = await Promise.all([
 		pengaduan.idPelanggan
 			? prisma.TABEL_PELANGGAN.findUnique({ where: { ID_PELANGGAN: pengaduan.idPelanggan } })
 			: null,
@@ -110,10 +214,12 @@ const enrichPengaduan = async (pengaduanDb) => {
 					select: { ID_USER: true, NAMA_USER: true, ROLE: true },
 			  })
 			: null,
+		getFileMetadata([pengaduan.idPengaduan]),
 	]);
 
 	return {
 		...pengaduan,
+		files: filesByPengaduan.get(pengaduan.idPengaduan) || [],
 		pelanggan: mapPelangganFromDb(pelanggan),
 		penerima: mapUserFromDb(penerima),
 		penangani: mapUserFromDb(penangani),
@@ -136,8 +242,9 @@ const enrichMany = async (list) => {
 			...mapped.map((p) => p.idUserPenanganan),
 		].filter(Boolean)),
 	];
+	const pengaduanIds = mapped.map((p) => p.idPengaduan);
 
-	const [pelangganList, userList] = await Promise.all([
+	const [pelangganList, userList, filesByPengaduan] = await Promise.all([
 		pelangganIds.length
 			? prisma.TABEL_PELANGGAN.findMany({ where: { ID_PELANGGAN: { in: pelangganIds } } })
 			: [],
@@ -147,6 +254,7 @@ const enrichMany = async (list) => {
 					select: { ID_USER: true, NAMA_USER: true, ROLE: true },
 			  })
 			: [],
+		getFileMetadata(pengaduanIds),
 	]);
 
 	const pelangganMap = Object.fromEntries(pelangganList.map((p) => [p.ID_PELANGGAN, mapPelangganFromDb(p)]));
@@ -154,6 +262,7 @@ const enrichMany = async (list) => {
 
 	return mapped.map((pengaduan) => ({
 		...pengaduan,
+		files: filesByPengaduan.get(pengaduan.idPengaduan) || [],
 		pelanggan: pelangganMap[pengaduan.idPelanggan] || null,
 		penerima: userMap[pengaduan.idUserPenerima] || null,
 		penangani: userMap[pengaduan.idUserPenanganan] || null,
@@ -195,11 +304,7 @@ export const getAllPelanggan = async (req, res, next) => {
 
 		const enriched = await enrichMany(pengaduanList);
 
-		const formattedData = enriched.map((item) => ({
-			...item,
-			dokumenLaporan: formatFileUrl(req, item.dokumenLaporan),
-			fotoKeluhan: formatFileUrl(req, item.fotoKeluhan),
-		}));
+		const formattedData = enriched.map((item) => formatPengaduanFiles(req, item));
 
 		res.status(200).json({ success: true, data: formattedData });
 	} catch (error) {
@@ -225,11 +330,7 @@ export const getPelangganByStatus = async (req, res, next) => {
 
 		const enriched = await enrichMany(pengaduanList);
 
-		const formattedData = enriched.map((item) => ({
-			...item,
-			dokumenLaporan: formatFileUrl(req, item.dokumenLaporan),
-			fotoKeluhan: formatFileUrl(req, item.fotoKeluhan),
-		}));
+		const formattedData = enriched.map((item) => formatPengaduanFiles(req, item));
 
 		res.status(200).json({ success: true, data: formattedData });
 	} catch (error) {
@@ -251,17 +352,29 @@ export const getPelangganById = async (req, res, next) => {
 
 		const enriched = await enrichPengaduan(pengaduan);
 
-		const formattedData = {
-			...enriched,
-			dokumenLaporan: formatFileUrl(req, enriched.dokumenLaporan),
-			fotoKeluhan: formatFileUrl(req, enriched.fotoKeluhan),
-		};
+		const formattedData = formatPengaduanFiles(req, enriched);
 
 		res.status(200).json({ success: true, data: formattedData });
 	} catch (error) {
 		next(error);
 	}
 };
+
+const buildFileRecords = (pengaduanId, files = {}) =>
+	[
+		...(files.dokumenLaporan || []).map((file) => ["dokumenLaporan", file]),
+		...(files.fotoKeluhan || []).map((file) => ["fotoKeluhan", file]),
+	].map(([type, file]) => ({
+		ID_FILE: randomUUID(),
+		ID_PENGADUAN: pengaduanId,
+		JENIS_FILE: type,
+		NAMA_FILE: path.basename(file.originalname.replace(/\\/g, "/")).slice(0, 255),
+		MIME_TYPE: file.mimetype.slice(0, 100),
+		FILE_DATA: file.buffer,
+	}));
+
+const fileEndpoint = (pengaduanId, fileId) =>
+	`/api/pelanggan/${pengaduanId}/files/${fileId}`;
 
 export const createPelanggan = async (req, res, next) => {
 	try {
@@ -275,13 +388,16 @@ export const createPelanggan = async (req, res, next) => {
 			sumberAduan,
 			saluranKeluhan,
 		} = req.body;
-		const dokumenLaporanFile = req.files?.dokumenLaporan?.[0];
-		const fotoKeluhanFile = req.files?.fotoKeluhan?.[0];
 		const pengaduanId = randomUUID();
-		const dokumenLaporanPath = dokumenLaporanFile
-			? `/api/pelanggan/${pengaduanId}/dokumen`
+		const uploadedFiles = buildFileRecords(pengaduanId, req.files);
+		const firstDocument = uploadedFiles.find((file) => file.JENIS_FILE === "dokumenLaporan");
+		const firstPhoto = uploadedFiles.find((file) => file.JENIS_FILE === "fotoKeluhan");
+		const dokumenLaporanPath = firstDocument
+			? fileEndpoint(pengaduanId, firstDocument.ID_FILE)
 			: undefined;
-		const fotoKeluhanPath = fotoKeluhanFile ? `/api/pelanggan/${pengaduanId}/foto` : undefined;
+		const fotoKeluhanPath = firstPhoto
+			? fileEndpoint(pengaduanId, firstPhoto.ID_FILE)
+			: undefined;
 
 		if (!idUserCS) {
 			return res.status(400).json({ success: false, message: "idUserCS wajib diisi" });
@@ -324,51 +440,28 @@ export const createPelanggan = async (req, res, next) => {
 				},
 			});
 
-			if (dokumenLaporanFile || fotoKeluhanFile) {
-				await tx.TABEL_PENGADUAN_FILE.create({
-					data: {
-						ID_PENGADUAN: pengaduanId,
-						...(dokumenLaporanFile && {
-							DOKUMEN_LAPORAN_DATA: dokumenLaporanFile.buffer,
-							DOKUMEN_LAPORAN_MIME: dokumenLaporanFile.mimetype,
-							DOKUMEN_LAPORAN_NAMA: dokumenLaporanFile.originalname,
-						}),
-						...(fotoKeluhanFile && {
-							FOTO_KELUHAN_DATA: fotoKeluhanFile.buffer,
-							FOTO_KELUHAN_MIME: fotoKeluhanFile.mimetype,
-							FOTO_KELUHAN_NAMA: fotoKeluhanFile.originalname,
-						}),
-					},
-				});
+			if (uploadedFiles.length) {
+				await tx.TABEL_PENGADUAN_FILE_ITEM.createMany({ data: uploadedFiles });
 			}
 
 			return {
 				pelangganBaru: mapPelangganFromDb(pelangganBaru),
-				pengaduanBaru: mapPengaduanFromDb(pengaduanBaru),
+				pengaduanBaru,
 			};
 		});
 
+		const enriched = await enrichPengaduan(result.pengaduanBaru);
+		const formattedPengaduan = formatPengaduanFiles(req, enriched);
 		res.status(201).json({
 			success: true,
 			message: "Pengaduan berhasil ditambahkan",
 			data: {
-				...result,
-				dokumenLaporan: formatFileUrl(
-					req,
-					dokumenLaporanPath || result.pengaduanBaru.dokumenLaporan,
-				),
-				fotoKeluhan: formatFileUrl(req, fotoKeluhanPath || result.pengaduanBaru.fotoKeluhan),
-				pengaduanBaru: {
-					...result.pengaduanBaru,
-					dokumenLaporan: formatFileUrl(
-						req,
-						dokumenLaporanPath || result.pengaduanBaru.dokumenLaporan,
-					),
-					fotoKeluhan: formatFileUrl(
-						req,
-						fotoKeluhanPath || result.pengaduanBaru.fotoKeluhan,
-					),
-				},
+				pelangganBaru: result.pelangganBaru,
+				pengaduanBaru: formattedPengaduan,
+				dokumenLaporan: formattedPengaduan.dokumenLaporan,
+				dokumenLaporanFiles: formattedPengaduan.dokumenLaporanFiles,
+				fotoKeluhan: formattedPengaduan.fotoKeluhan,
+				fotoKeluhanFiles: formattedPengaduan.fotoKeluhanFiles,
 			},
 		});
 	} catch (error) {
@@ -401,26 +494,15 @@ export const updatePelanggan = async (req, res, next) => {
 			return res.status(404).json({ success: false, message: "Data pengaduan tidak ditemukan" });
 		}
 
-		const dokumenLaporanFile = req.files?.dokumenLaporan?.[0];
-		const fotoKeluhanFile = req.files?.fotoKeluhan?.[0];
-		const dokumenLaporanPath = dokumenLaporanFile
-			? `/api/pelanggan/${id}/dokumen`
+		const uploadedFiles = buildFileRecords(id, req.files);
+		const firstDocument = uploadedFiles.find((file) => file.JENIS_FILE === "dokumenLaporan");
+		const firstPhoto = uploadedFiles.find((file) => file.JENIS_FILE === "fotoKeluhan");
+		const dokumenLaporanPath = firstDocument
+			? fileEndpoint(id, firstDocument.ID_FILE)
 			: pengaduanExist.DOKUMEN_LAPORAN;
-		const fotoKeluhanPath = fotoKeluhanFile
-			? `/api/pelanggan/${id}/foto`
+		const fotoKeluhanPath = firstPhoto
+			? fileEndpoint(id, firstPhoto.ID_FILE)
 			: pengaduanExist.FOTO_KELUHAN;
-		const fileUpdateData = {
-			...(dokumenLaporanFile && {
-				DOKUMEN_LAPORAN_DATA: dokumenLaporanFile.buffer,
-				DOKUMEN_LAPORAN_MIME: dokumenLaporanFile.mimetype,
-				DOKUMEN_LAPORAN_NAMA: dokumenLaporanFile.originalname,
-			}),
-			...(fotoKeluhanFile && {
-				FOTO_KELUHAN_DATA: fotoKeluhanFile.buffer,
-				FOTO_KELUHAN_MIME: fotoKeluhanFile.mimetype,
-				FOTO_KELUHAN_NAMA: fotoKeluhanFile.originalname,
-			}),
-		};
 		const updatePengaduan = async (data) =>
 			prisma.$transaction(async (tx) => {
 				const updated = await tx.TABEL_PENGADUAN.update({
@@ -428,12 +510,8 @@ export const updatePelanggan = async (req, res, next) => {
 					data,
 				});
 
-				if (dokumenLaporanFile || fotoKeluhanFile) {
-					await tx.TABEL_PENGADUAN_FILE.upsert({
-						where: { ID_PENGADUAN: id },
-						create: { ID_PENGADUAN: id, ...fileUpdateData },
-						update: fileUpdateData,
-					});
+				if (uploadedFiles.length) {
+					await tx.TABEL_PENGADUAN_FILE_ITEM.createMany({ data: uploadedFiles });
 				}
 
 				return updated;
@@ -474,11 +552,7 @@ export const updatePelanggan = async (req, res, next) => {
 			return res.status(200).json({
 				success: true,
 				message: "Data berhasil diperbarui menjadi ON PROGRESS",
-				data: {
-					...enriched,
-					dokumenLaporan: formatFileUrl(req, dokumenLaporanPath || enriched.dokumenLaporan),
-					fotoKeluhan: formatFileUrl(req, fotoKeluhanPath || enriched.fotoKeluhan),
-				},
+				data: formatPengaduanFiles(req, enriched),
 			});
 		}
 
@@ -499,11 +573,7 @@ export const updatePelanggan = async (req, res, next) => {
 			return res.status(200).json({
 				success: true,
 				message: "Data pengaduan berhasil diselesaikan dan diperbarui",
-				data: {
-					...enriched,
-					dokumenLaporan: formatFileUrl(req, dokumenLaporanPath || enriched.dokumenLaporan),
-					fotoKeluhan: formatFileUrl(req, fotoKeluhanPath || enriched.fotoKeluhan),
-				},
+				data: formatPengaduanFiles(req, enriched),
 			});
 		}
 
@@ -520,11 +590,7 @@ export const updatePelanggan = async (req, res, next) => {
 		return res.status(200).json({
 			success: true,
 			message: "Data pelanggan dan pengaduan berhasil diperbarui",
-			data: {
-				...enriched,
-				dokumenLaporan: formatFileUrl(req, dokumenLaporanPath || enriched.dokumenLaporan),
-				fotoKeluhan: formatFileUrl(req, fotoKeluhanPath || enriched.fotoKeluhan),
-			},
+			data: formatPengaduanFiles(req, enriched),
 		});
 	} catch (error) {
 		next(error);
@@ -562,11 +628,7 @@ export const getHistory = async (req, res, next) => {
 
 		const enriched = await enrichMany(history);
 
-		const formattedData = enriched.map((item) => ({
-			...item,
-			dokumenLaporan: formatFileUrl(req, item.dokumenLaporan),
-			fotoKeluhan: formatFileUrl(req, item.fotoKeluhan),
-		}));
+		const formattedData = enriched.map((item) => formatPengaduanFiles(req, item));
 
 		res.status(200).json({ success: true, data: formattedData });
 	} catch (error) {
@@ -633,6 +695,38 @@ const serveDatabaseFile = (res, data, mimeType, fileName) => {
 	return res.send(Buffer.from(data));
 };
 
+export const viewPengaduanFile = async (req, res, next) => {
+	try {
+		const { id, fileId } = req.params;
+
+		if (fileId === "legacy-dokumen" || fileId === "legacy-foto") {
+			const legacy = await prisma.TABEL_PENGADUAN_FILE.findUnique({
+				where: { ID_PENGADUAN: id },
+			});
+			const isDocument = fileId === "legacy-dokumen";
+			const served = serveDatabaseFile(
+				res,
+				isDocument ? legacy?.DOKUMEN_LAPORAN_DATA : legacy?.FOTO_KELUHAN_DATA,
+				isDocument ? legacy?.DOKUMEN_LAPORAN_MIME : legacy?.FOTO_KELUHAN_MIME,
+				isDocument ? legacy?.DOKUMEN_LAPORAN_NAMA : legacy?.FOTO_KELUHAN_NAMA,
+			);
+			if (served) return served;
+			return res.status(404).json({ success: false, message: "File tidak ditemukan" });
+		}
+
+		const file = await prisma.TABEL_PENGADUAN_FILE_ITEM.findFirst({
+			where: { ID_FILE: fileId, ID_PENGADUAN: id },
+		});
+		if (!file) {
+			return res.status(404).json({ success: false, message: "File tidak ditemukan" });
+		}
+
+		return serveDatabaseFile(res, file.FILE_DATA, file.MIME_TYPE, file.NAMA_FILE);
+	} catch (error) {
+		next(error);
+	}
+};
+
 export const viewDokumenLaporan = async (req, res, next) => {
 	try {
 		const { id } = req.params;
@@ -654,6 +748,14 @@ export const viewDokumenLaporan = async (req, res, next) => {
 
 		if (!pengaduan) {
 			return res.status(404).json({ success: false, message: "Data pengaduan tidak ditemukan" });
+		}
+
+		const latestFile = await prisma.TABEL_PENGADUAN_FILE_ITEM.findFirst({
+			where: { ID_PENGADUAN: id, JENIS_FILE: "dokumenLaporan" },
+			orderBy: { CREATED_AT: "asc" },
+		});
+		if (latestFile) {
+			return serveDatabaseFile(res, latestFile.FILE_DATA, latestFile.MIME_TYPE, latestFile.NAMA_FILE);
 		}
 
 		const databaseFile = serveDatabaseFile(
@@ -691,6 +793,14 @@ export const viewFotoKeluhan = async (req, res, next) => {
 
 		if (!pengaduan) {
 			return res.status(404).json({ success: false, message: "Data pengaduan tidak ditemukan" });
+		}
+
+		const latestFile = await prisma.TABEL_PENGADUAN_FILE_ITEM.findFirst({
+			where: { ID_PENGADUAN: id, JENIS_FILE: "fotoKeluhan" },
+			orderBy: { CREATED_AT: "asc" },
+		});
+		if (latestFile) {
+			return serveDatabaseFile(res, latestFile.FILE_DATA, latestFile.MIME_TYPE, latestFile.NAMA_FILE);
 		}
 
 		const databaseFile = serveDatabaseFile(
