@@ -538,6 +538,26 @@ fotoKeluhan: (File; ulangi field hingga 5 foto)</code></pre>
       </div>
     </div>
 
+    <!-- DELETE UPLOADED FILE -->
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method DELETE">DELETE</span>
+        <span class="path">/api/pelanggan/:id/files/:fileId</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-desc">Menghapus satu file yang salah diunggah. File hanya dapat dihapus jika <code>:fileId</code> milik pengaduan pada <code>:id</code>. Jika file utama dihapus, URL file utama diperbarui ke file sejenis berikutnya.</div>
+        <div class="tab-title">URL Parameter:</div>
+        <pre><code class="language-http">:id -> ID Pengaduan
+:fileId -> ID file dari item pada array file</code></pre>
+        <div class="tab-title">Response:</div>
+        <pre><code class="language-json">{
+  "success": true,
+  "message": "File berhasil dihapus",
+  "data": { "idFile": "uuid-file", "type": "fotoKeluhan" }
+}</code></pre>
+      </div>
+    </div>
+
   </main>
 
   <script>hljs.highlightAll();</script>

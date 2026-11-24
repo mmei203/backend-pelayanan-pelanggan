@@ -8,6 +8,7 @@ import {
 	getHistory,
 	printPengaduan,
 	viewPengaduanFile,
+	deletePengaduanFile,
 	viewDokumenLaporan,
 	viewFotoKeluhan,
 } from "../controllers/pelanggan.controllers.js";
@@ -20,6 +21,7 @@ router.get("/pelanggan/filter", getPelangganByStatus);
 router.get("/pelanggan/history", getHistory);
 router.get("/pelanggan/:id/print", printPengaduan);
 router.get("/pelanggan/:id/files/:fileId", viewPengaduanFile);
+router.delete("/pelanggan/:id/files/:fileId", deletePengaduanFile);
 router.get("/pelanggan/:id/dokumen", viewDokumenLaporan);
 router.get("/pelanggan/:id/foto", viewFotoKeluhan);
 router.get("/pelanggan/:id", getPelangganById);

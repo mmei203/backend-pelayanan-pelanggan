@@ -727,6 +727,85 @@ export const viewPengaduanFile = async (req, res, next) => {
 	}
 };
 
+export const deletePengaduanFile = async (req, res, next) => {
+	try {
+		const { id, fileId } = req.params;
+		const pengaduan = await prisma.TABEL_PENGADUAN.findUnique({
+			where: { ID_PENGADUAN: id },
+			select: {
+				DOKUMEN_LAPORAN: true,
+				FOTO_KELUHAN: true,
+			},
+		});
+
+		if (!pengaduan) {
+			return res.status(404).json({ success: false, message: "Data pengaduan tidak ditemukan" });
+		}
+
+		const file = await prisma.TABEL_PENGADUAN_FILE_ITEM.findFirst({
+			where: { ID_FILE: fileId, ID_PENGADUAN: id },
+			select: { ID_FILE: true, JENIS_FILE: true },
+		});
+		if (!file) {
+			return res.status(404).json({ success: false, message: "File tidak ditemukan" });
+		}
+		if (!["dokumenLaporan", "fotoKeluhan"].includes(file.JENIS_FILE)) {
+			return res.status(409).json({ success: false, message: "Jenis file tidak didukung untuk dihapus" });
+		}
+
+		const deleted = await prisma.$transaction(async (tx) => {
+			const result = await tx.TABEL_PENGADUAN_FILE_ITEM.deleteMany({
+				where: { ID_FILE: fileId, ID_PENGADUAN: id },
+			});
+			if (result.count !== 1) return false;
+
+			const isDocument = file.JENIS_FILE === "dokumenLaporan";
+			const field = isDocument ? "DOKUMEN_LAPORAN" : "FOTO_KELUHAN";
+			const currentPath = isDocument ? pengaduan.DOKUMEN_LAPORAN : pengaduan.FOTO_KELUHAN;
+			if (currentPath === fileEndpoint(id, fileId)) {
+				const nextFile = await tx.TABEL_PENGADUAN_FILE_ITEM.findFirst({
+					where: { ID_PENGADUAN: id, JENIS_FILE: file.JENIS_FILE },
+					orderBy: [{ CREATED_AT: "asc" }, { ID_FILE: "asc" }],
+					select: { ID_FILE: true },
+				});
+				const legacyFile = await tx.TABEL_PENGADUAN_FILE.findUnique({
+					where: { ID_PENGADUAN: id },
+					select: isDocument
+						? { DOKUMEN_LAPORAN_MIME: true, DOKUMEN_LAPORAN_NAMA: true }
+						: { FOTO_KELUHAN_MIME: true, FOTO_KELUHAN_NAMA: true },
+				});
+				const hasLegacyFile = isDocument
+					? Boolean(legacyFile?.DOKUMEN_LAPORAN_MIME || legacyFile?.DOKUMEN_LAPORAN_NAMA)
+					: Boolean(legacyFile?.FOTO_KELUHAN_MIME || legacyFile?.FOTO_KELUHAN_NAMA);
+				const nextPath = nextFile
+					? fileEndpoint(id, nextFile.ID_FILE)
+					: hasLegacyFile
+						? `/api/pelanggan/${id}/${isDocument ? "dokumen" : "foto"}`
+						: null;
+
+				await tx.TABEL_PENGADUAN.update({
+					where: { ID_PENGADUAN: id },
+					data: { [field]: nextPath },
+				});
+			}
+
+			return true;
+		});
+
+		if (!deleted) {
+			return res.status(404).json({ success: false, message: "File tidak ditemukan" });
+		}
+
+		return res.status(200).json({
+			success: true,
+			message: "File berhasil dihapus",
+			data: { idFile: file.ID_FILE, type: file.JENIS_FILE },
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
 export const viewDokumenLaporan = async (req, res, next) => {
 	try {
 		const { id } = req.params;
